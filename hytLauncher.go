@@ -236,27 +236,51 @@ func launchGame(version int, channel string, username string, uuid string) {
 
 	javaBin, _ := findJavaBin().(string);
 
-
 	appDir := getVersionInstallPath(version, channel)
 	userDir := UserDataFolder()
 	clientBinary := findClientBinary(version, channel);
 
-	e := exec.Command(clientBinary,
-			"--app-dir",
-			appDir,
-			"--user-dir",
-			userDir,
-			"--java-exec",
-			javaBin,
-			"--auth-mode",
-			"offline",
-			"--uuid",
-			uuid,
-			"--name",
-			username);
+	go runServer();
 
-	fmt.Printf("Running: %s %s\n", clientBinary, strings.Join(e.Args, " "))
+	if runtime.GOOS == "windows" {
+		e := exec.Command(clientBinary,
+				  "--app-dir",
+		    appDir,
+		    "--user-dir",
+		    userDir,
+		    "--java-exec",
+		    javaBin,
+		    "--auth-mode",
+		    "authenticated",
+		    "--uuid",
+		    uuid,
+		    "--name",
+		    username,
+		    "--identity-token",
+		    generateIdentityJwt(),
+		    "--session-token",
+		    generateSessionJwt());
 
-	e.Start();
+		fmt.Printf("Running: %s %s\n", clientBinary, strings.Join(e.Args, " "))
 
+		e.Start();
+	} else { // start in offline mode
+		e := exec.Command(clientBinary,
+				  "--app-dir",
+		    appDir,
+		    "--user-dir",
+		    userDir,
+		    "--java-exec",
+		    javaBin,
+		    "--auth-mode",
+		    "offline",
+		    "--uuid",
+		    uuid,
+		    "--name",
+		    username);
+
+		fmt.Printf("Running: %s %s\n", clientBinary, strings.Join(e.Args, " "))
+
+		e.Start();
+	}
 }

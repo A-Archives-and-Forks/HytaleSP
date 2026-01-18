@@ -18,6 +18,7 @@ type patchlines struct {
 	Release    gameVersion    `json:"release"`
 }
 
+
 type accountInfo struct {
 	CreatedAt        time.Time `json:"createdAt"`
 	Entitlements     []string  `json:"entitlements"`
@@ -26,8 +27,12 @@ type accountInfo struct {
 	Username         string    `json:"username"`
 	UUID             string    `json:"uuid"`
 }
+// there is more to it than this, this is just all we have to care about ...
+type cosmeticDefinition struct {
+	Id string `json:"Id"`
+}
 
-type cosmeticInventory struct {
+type cosmeticsInventory struct {
 	BodyCharacteristic []string `json:"bodyCharacteristic"`
 	Cape               []string `json:"cape"`
 	EarAccessory       []string `json:"earAccessory"`
