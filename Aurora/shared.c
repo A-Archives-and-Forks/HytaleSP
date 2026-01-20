@@ -100,11 +100,7 @@ modinfo get_base() {
 
 		}
 	};
-
-
 	fclose(fd);
-
-
 	return (modinfo) {
 		.start = begin,
 		.sz = end
