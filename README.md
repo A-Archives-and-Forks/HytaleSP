@@ -7,4 +7,28 @@ An alternative launcher for "Hytale"
  
 Currently for: Windows and Linux
 
--- i need access to an ARM mac to make a mac verison.
+(i need access to an ARM mac to make a mac os version) 
+
+## Project layout
+
+hytServer.go - hytale authentication server emulator "online fix"
+hytAuth.go - implementation of hytale OAuth2.0, currently not used
+hytFormats.go - most of the JSON structures used by hytale are here;
+hytClient.go - downloading versions, etc
+patch.go - itch.io's 'apply patch' wharf code
+jwt.go - JSON structures used in hytale auth tokens
+locations.go - default / location resolvers for many folders
+
+
+Aurora/ - c code for the dll or shared object, loaded with the game, 
+that replaces account-data.hytale.com with a custom server .. 
+
+# Building
+
+on windows, you first have to build the "Aurora.dll" using MSVC, and then you can use ``go build .``
+alternatively, you can also use ``build-windows.bat`` which will build it as SUBSYSTEM:WINDOWS ..
+and generate the application manifest and version information;
+
+on linux, you need GCC, you can build "Aurora.so" using its makefile;
+then use ``go build .`` you can also try out 'build-linux.sh'
+
