@@ -89,7 +89,12 @@ func getJreDownloadPath(operatingSystem string, architecture string, downloadUrl
 
 func downloadLatestVersion(atokens accessTokens, architecture string, operatingSystem string, channel string, fromVersion int, progress func(done int64, total int64)) error {
 	fmt.Printf("Start version: %d\n", fromVersion);
-	manifest := getVersionManifest(atokens, architecture, operatingSystem, channel, fromVersion);
+	manifest, err := getVersionManifest(atokens, architecture, operatingSystem, channel, fromVersion);
+
+	if(err != nil) {
+		return err;
+	}
+
 	for _, step := range manifest.Steps {
 		save := getVersionDownloadPath(step.From, step.To, channel);
 		return download(step.Pwr, save, progress);
@@ -127,49 +132,49 @@ func installJre(progress func(done int64, total int64)) error{
 		return nil;
 	}
 
-	jres, ok := getJres("release").(versionFeed);
-	if ok {
+	jres, err := getJres("release");
+	if err != nil {
+		return err;
+	}
 
-		var downloadUrl string;
 
-		switch(runtime.GOOS) {
-			case "windows":
-				downloadUrl = jres.DownloadUrls.Windows.Amd64.URL;
-			case "linux":
-				downloadUrl = jres.DownloadUrls.Linux.Amd64.URL;
-			case "darwin":
-				downloadUrl = jres.DownloadUrls.Darwin.Amd64.URL;
+	var downloadUrl string;
 
-		}
-
-		save := getJreDownloadPath(runtime.GOOS, runtime.GOARCH, downloadUrl);
-		unpack := getJrePath(runtime.GOOS, runtime.GOARCH);
-
-		err := download(downloadUrl, save, progress);
-		if err != nil {
-			return err;
-		}
-
-		os.MkdirAll(unpack, 0775);
-
-		f, err := os.Open(save);
-		if err != nil {
-			return err;
-		}
-
-		err = unpackit.Unpack(f, unpack);
-
-		if(err != nil) {
-			return err;
-		}
-
-		os.Remove(save);
-		os.RemoveAll(filepath.Dir(save));
-		return nil;
+	switch(runtime.GOOS) {
+		case "windows":
+			downloadUrl = jres.DownloadUrls.Windows.Amd64.URL;
+		case "linux":
+			downloadUrl = jres.DownloadUrls.Linux.Amd64.URL;
+		case "darwin":
+			downloadUrl = jres.DownloadUrls.Darwin.Amd64.URL;
 
 	}
 
-	return errors.New("Failed to get the JRE feed.");
+	save := getJreDownloadPath(runtime.GOOS, runtime.GOARCH, downloadUrl);
+	unpack := getJrePath(runtime.GOOS, runtime.GOARCH);
+
+	err = download(downloadUrl, save, progress);
+	if err != nil {
+		return err;
+	}
+
+	os.MkdirAll(unpack, 0775);
+
+	f, err := os.Open(save);
+	if err != nil {
+		return err;
+	}
+
+	err = unpackit.Unpack(f, unpack);
+
+	if(err != nil) {
+		return err;
+	}
+
+	os.Remove(save);
+	os.RemoveAll(filepath.Dir(save));
+	return nil;
+
 }
 
 func findClosestVersion(targetVersion int, channel string) int {
@@ -261,6 +266,7 @@ func findJavaBin() any {
 
 	return nil;
 }
+
 
 func findClientBinary(version int, channel string) string {
 	clientFolder := filepath.Join(getVersionInstallPath(version, channel), "Client");
@@ -364,9 +370,18 @@ func launchGame(version int, channel string, username string, uuid string) error
 		e.Process.Wait();
 
 	} else if wCommune.Mode == "authenticated" { // start authenticated
-		atokens, ok := wCommune.AuthTokens.(accessTokens);
-		if !ok {
+		if wCommune.AuthTokens == nil {
 			return errors.New("No auth token found.");
+		}
+
+		launcherData, err := getLauncherData(*wCommune.AuthTokens, runtime.GOARCH, runtime.GOOS);
+		if(err != nil) {
+			return err;
+		}
+
+		newSess, err := getNewSession(*wCommune.AuthTokens, launcherData.Profiles[0].UUID);
+		if(err != nil) {
+			return err;
 		}
 
 		e := exec.Command(clientBinary,
@@ -379,15 +394,15 @@ func launchGame(version int, channel string, username string, uuid string) error
 			"--auth-mode",
 			"authenticated",
 			"--uuid",
-			uuid,
+			launcherData.Profiles[0].UUID,
 			"--name",
-			username,
+			launcherData.Profiles[0].Username,
 			"--identity-token",
-			atokens.IDToken,
+			newSess.IdentityToken,
 			"--session-token",
-			atokens.AccessToken);
+			newSess.SessionToken);
 
-		err := e.Start();
+		err = e.Start();
 
 		if err != nil {
 			return err;

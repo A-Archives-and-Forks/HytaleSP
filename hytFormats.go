@@ -66,6 +66,10 @@ type versionManifest struct {
 }
 
 
+type sessNewRequest struct {
+	UUID string `json:"uuid"`
+}
+
 type hashedDownload struct {
 	URL    string `json:"url"`
 	Sha256 string `json:"sha256"`

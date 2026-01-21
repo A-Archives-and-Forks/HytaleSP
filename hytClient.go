@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -11,6 +13,8 @@ import (
 const ACCOUNT_DATA_URL = "https://account-data.hytale.com/";
 const GAME_PATCHES_URL = "https://game-patches.hytale.com/";
 const LAUNCHER_URL     = "https://launcher.hytale.com/"
+const SESSIONS_URL     = "https://sessions.hytale.com/"
+
 
 func guessPatchSigUrlNoAuth(architecture string, operatingSystem string, channel string, startVersion int, targetVersion int) string{
 	fullUrl, _ := url.JoinPath(GAME_PATCHES_URL, "patches", operatingSystem, architecture, channel, strconv.Itoa(startVersion), strconv.Itoa(targetVersion) + ".pwr.sig");
@@ -21,38 +25,81 @@ func guessPatchUrlNoAuth(architecture string, operatingSystem string, channel st
 	return fullUrl;
 }
 
-func getJres(channel string) any {
+func getNewSession(atokens accessTokens, uuid string) (sessionNew, error) {
+	fullUrl, _ := url.JoinPath(SESSIONS_URL, "game-session", "new");
+
+
+	nSess := sessNewRequest{
+		UUID: uuid,
+	};
+
+	j, err := json.Marshal(&nSess);
+
+	if err != nil {
+		return sessionNew{}, err;
+	}
+
+	req, err:= http.NewRequest("POST", fullUrl, bytes.NewReader(j));
+
+	if err != nil {
+		return sessionNew{}, err;
+	}
+
+
+	req.Header.Add("Authorization", "Bearer " + atokens.AccessToken);
+	req.Header.Add("Content-Type", "application/json");
+
+	n := sessionNew{};
+
+	resp, err := http.DefaultClient.Do(req);
+
+	if err != nil {
+		return sessionNew{}, err;
+	}
+
+
+	if resp.StatusCode == 200 {
+		json.NewDecoder(resp.Body).Decode(&n);
+		return n, nil;
+	}
+
+	return sessionNew{}, fmt.Errorf("got non-200 status");
+
+}
+
+
+func getJres(channel string) (versionFeed, error) {
 	fullUrl, _ := url.JoinPath(LAUNCHER_URL, "version", channel, "jre.json");
 
 	resp, err := http.Get(fullUrl);
 	if err != nil{
-		return nil;
+		return versionFeed{}, err;;
 	}
 
 	feed := versionFeed{};
 	json.NewDecoder(resp.Body).Decode(&feed);
 
-	return feed;
+	return feed, nil;
 }
 
-func getLaunchers(channel string) any {
+func getLaunchers(channel string) (versionFeed, error) {
 	fullUrl, _ := url.JoinPath(LAUNCHER_URL, "version", channel, "launcher.json");
 
 	resp, err := http.Get(fullUrl);
 
 	if err != nil{
-		return nil;
+		return versionFeed{}, err;;
 	}
 
 
 	feed := versionFeed{};
 	json.NewDecoder(resp.Body).Decode(&feed);
 
-	return feed;
+	return feed, nil;
 
 }
 
-func getLauncherData(atokens accessTokens, architecture string, operatingSystem string) launcherData {
+func getLauncherData(atokens accessTokens, architecture string, operatingSystem string) (launcherData, error) {
 
 	fullUrl, _ := url.JoinPath(ACCOUNT_DATA_URL, "my-account", "get-launcher-data");
 	launcherDataUrl, _ := url.Parse(fullUrl);
@@ -68,15 +115,19 @@ func getLauncherData(atokens accessTokens, architecture string, operatingSystem 
 	req.Header.Add("Authorization", "Bearer " + atokens.AccessToken);
 	req.Header.Add("Content-Type", "application/json");
 
-	resp, _ := http.DefaultClient.Do(req);
+	resp, err := http.DefaultClient.Do(req);
+
+	if err != nil {
+		return launcherData{}, err;
+	}
 
 	ldata := launcherData{};
 	json.NewDecoder(resp.Body).Decode(&ldata);
 
-	return ldata;
+	return ldata, nil;
 }
 
-func getVersionManifest(atokens accessTokens, architecture string, operatingSystem string, channel string, gameVersion int) versionManifest {
+func getVersionManifest(atokens accessTokens, architecture string, operatingSystem string, channel string, gameVersion int) (versionManifest, error) {
 	fullUrl, _ := url.JoinPath(ACCOUNT_DATA_URL, "patches", operatingSystem, architecture, channel, strconv.Itoa(gameVersion));
 
 	req, _:= http.NewRequest("GET", fullUrl, nil);
@@ -84,12 +135,17 @@ func getVersionManifest(atokens accessTokens, architecture string, operatingSyst
 	req.Header.Add("Authorization", "Bearer " + atokens.AccessToken);
 	req.Header.Add("Content-Type", "application/json");
 
-	resp, _ := http.DefaultClient.Do(req);
+	resp, err := http.DefaultClient.Do(req);
+
+	if err != nil {
+		return versionManifest{}, err;
+	}
+
 
 	mdata := versionManifest{};
 	json.NewDecoder(resp.Body).Decode(&mdata);
 
-	return mdata;
+	return mdata, nil;
 }
 
 

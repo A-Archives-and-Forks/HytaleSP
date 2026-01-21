@@ -129,7 +129,7 @@ func readCosmetics() string {
 	return string(cosmeticsJson);
 }
 
-func getAccountInfo() accountInfo {
+func genAccountInfo() accountInfo {
 	readSkinData();
 	return accountInfo{
 		Username: wCommune.Username,
@@ -165,7 +165,7 @@ func handleMyAccountGameProfile(w http.ResponseWriter, req *http.Request) {
 		case "GET":
 			w.Header().Add("Content-Type", "application/json");
 			w.WriteHeader(200);
-			json.NewEncoder(w).Encode(getAccountInfo());
+			json.NewEncoder(w).Encode(genAccountInfo());
 	}
 }
 
@@ -187,7 +187,7 @@ func handleMyAccountLauncherData(w http.ResponseWriter, req *http.Request) {
 				},
 			},
 			Profiles: []accountInfo {
-				getAccountInfo(),
+				genAccountInfo(),
 			},
 		}
 		w.Header().Add("Content-Type", "application/json");

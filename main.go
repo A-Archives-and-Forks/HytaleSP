@@ -26,7 +26,7 @@ type launcherCommune struct {
 	LatestVersions map[string]int `json:"last_version_scan_result"`
 	GameFolder string `json:"install_directory"`
 	Mode string `json:"mode"`
-	AuthTokens any `json:"token"`
+	AuthTokens *accessTokens `json:"token"`
 }
 
 
@@ -58,7 +58,7 @@ func doAuthentication() {
 		loop.Do(func() error { updateWindow(); return nil; });
 	}
 
-	wCommune.AuthTokens = aTokens;
+	wCommune.AuthTokens = &aTokens;
 }
 
 
@@ -88,6 +88,20 @@ func checkForUpdates() {
 			writeSettings();
 			return nil;
 		});
+	}
+}
+
+func reAuthenticate() {
+	if wCommune.AuthTokens != nil {
+		aTokens, err:= getAuthTokens(*wCommune.AuthTokens);
+
+		if err != nil {
+			fmt.Printf("Failed to get auth token: %s\n",err);
+			return;
+		}
+
+		wCommune.AuthTokens = &aTokens;
+		writeSettings();
 	}
 }
 
@@ -141,8 +155,6 @@ func readSettings() {
 		fmt.Printf("newest known release: %d\n", wCommune.LatestVersions["release"])
 		fmt.Printf("newest known pre-release: %d\n", wCommune.LatestVersions["pre-release"])
 
-		// check for updates in the background
-		go checkForUpdates();
 	}
 }
 
@@ -333,6 +345,8 @@ func modeSelector () base.Widget {
 						case 2:
 							wCommune.Mode = "authenticated";
 					}
+
+					updateWindow();
 				},
 			},
 		},
@@ -351,6 +365,47 @@ func usernameBox() base.Widget {
 					OnChange: func(v string) {
 						wCommune.Username = v;
 					},
+			},
+		},
+	};
+}
+
+func loginBox() base.Widget {
+
+	logoutDisabled := wDisabled || wCommune.AuthTokens == nil;
+	loginDisabled := wDisabled || wCommune.AuthTokens != nil;
+
+	if wCommune.Mode != "authenticated" {
+		return &goey.Empty{};
+	}
+
+	return &goey.HBox{
+		AlignCross: goey.CrossCenter,
+		AlignMain: goey.Homogeneous,
+		Children: []base.Widget {
+			&goey.Button{
+				Text: "Login (OAuth 2.0)",
+				Disabled: loginDisabled,
+				OnClick: func() {
+					atokens, err := getAuthTokens(nil);
+					if err != nil {
+						showErrorDialog(fmt.Sprintf("Failed to login: %s", err), "Login error");
+						return;
+					}
+
+					wCommune.AuthTokens = &atokens;
+					writeSettings();
+					updateWindow();
+				},
+			},
+			&goey.Button{
+				Text: "Logout",
+				Disabled: logoutDisabled,
+				OnClick: func() {
+					wCommune.AuthTokens = nil;
+					writeSettings();
+					updateWindow();
+				},
 			},
 		},
 	};
@@ -482,11 +537,13 @@ func renderWindow() base.Widget {
 					},
 					installLocation(),
 					modeSelector(),
+					loginBox(),
 				},
 			},
 		},
 	}
 }
+
 
 
 func main() {
@@ -498,7 +555,9 @@ func main() {
 	os.MkdirAll(ServerDataFolder(), 0775);
 	readSettings();
 	os.MkdirAll(GameFolder(), 0775);
-;
+
+	go reAuthenticate();
+	go checkForUpdates();
 
 	err := loop.Run(createWindow)
 	if err != nil {
