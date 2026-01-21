@@ -56,4 +56,4 @@ also this is not nessecarily planned to be a purely 'offline mode' launcher;
 i also want to add "premium" support as well-
 mm the code for authentication flow is actually already here ..
 
-i wont remove that option though for those who need it~ 
+but i wont remove the 'offline' or 'fakeonline' options for those who need them though .. 
