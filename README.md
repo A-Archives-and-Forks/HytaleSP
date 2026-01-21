@@ -5,12 +5,14 @@ An alternative launcher for "Hytale" with a fairly streightforward "native" UI
  - Run offline without needing a hytale account.
  - Universal "fake online" or "online fix" for all versions;
  - Access all "Supporter" and "Cursebreaker" cosmetic items.
+ - Play local multiplayer !!
  
 Currently for: Windows and Linux
-
 (i need access to an ARM mac to make a mac os version) 
 
-
+NOTE: you can even probably play online, but only if the servers your joining have ``--auth-mode=insecure`` set in the command line;
+enabling this option would also mean anyone using the offical launcher cannot play 
+because it doesn't allow insecure auth type outside singleplayer offline mode; .. for some reason
 
 ## Project layout
 
