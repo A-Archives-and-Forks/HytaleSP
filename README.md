@@ -19,11 +19,17 @@ also if you use the "online play" feature in singleplayer should also work as lo
 ## Project layout
 
 hytServer.go - hytale authentication server emulator "online fix"
+
 hytAuth.go - implementation of hytale OAuth2.0, currently not used
+
 hytFormats.go - most of the JSON structures used by hytale are here;
+
 hytClient.go - downloading versions, etc
+
 patch.go - itch.io's 'apply patch' wharf code
+
 jwt.go - JSON structures used in hytale auth tokens
+
 locations.go - default / location resolvers for many folders
 
 
