@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Os -fPIC -nostdlib -fshort-wchar -shared
+CFLAGS=-O3 -fPIC -nostdlib -fshort-wchar -shared
 OBJ = cs_string.o shared.o patch.o
 OUTDIR=Build
 BINARY=$(OUTDIR)/Aurora.so
