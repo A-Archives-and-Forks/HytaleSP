@@ -32,7 +32,7 @@ type launcherCommune struct {
 }
 
 
-var(
+var (
 	wMainWin *windows.Window
 	wCommune = launcherCommune {
 		Patchline: "release",
@@ -59,11 +59,8 @@ func doAuthentication() {
 		showErrorDialog(fmt.Sprintf("Failed to get auth tokens: %s", err), "Auth failed.");
 		wCommune.AuthTokens = nil;
 		wCommune.Mode = "fakeonline";
-		loop.Do(func() error {
-			updateWindow();
-			writeSettings();
-			return nil;
-		});
+		writeSettings();
+		loop.Do(updateWindow);
 	}
 
 	wCommune.AuthTokens = &aTokens;
@@ -96,11 +93,8 @@ func checkForUpdates() {
 		}
 
 		if wMainWin != nil {
-			loop.Do(func() error {
-				updateWindow();
-				writeSettings();
-				return nil;
-			});
+			loop.Run(updateWindow);
+			writeSettings();
 		}
 	}
 }
@@ -119,11 +113,10 @@ func authenticatedCheckForUpdatesAndGetProfileList() {
 		showErrorDialog(fmt.Sprintf("Failed to get launcher data: %s", err), "Auth failed.");
 		wCommune.AuthTokens = nil;
 		wCommune.Mode = "fakeonline";
-		loop.Do(func() error {
-			updateWindow();
-			writeSettings();
-			return nil;
-		});
+		go func() {
+			loop.Do(updateWindow);
+		}();
+		writeSettings();
 	}
 
 	lastReleaseVersion := wCommune.LatestVersions["release"];
@@ -144,11 +137,8 @@ func authenticatedCheckForUpdatesAndGetProfileList() {
 	wCommune.Profiles = &lData.Profiles;
 
 	if wMainWin != nil {
-		loop.Do(func() error {
-			updateWindow();
-			writeSettings();
-			return nil;
-		});
+		loop.Do(updateWindow);
+		writeSettings();
 	}
 }
 
@@ -160,11 +150,8 @@ func reAuthenticate() {
 			showErrorDialog(fmt.Sprintf("Failed to authenticate: %s", err), "Auth failed.");
 			wCommune.AuthTokens = nil;
 			wCommune.Mode = "fakeonline";
-			loop.Do(func() error {
-				updateWindow();
-				writeSettings();
-				return nil;
-			});
+			loop.Do(updateWindow);
+			writeSettings();
 		}
 
 		wCommune.AuthTokens = &aTokens;
@@ -248,6 +235,39 @@ func channelToVal(channel string) int {
 	}
 }
 
+func startGame() {
+	// disable the current window
+	wDisabled = true;
+	loop.Do(updateWindow);
+
+	// enable the window again once done
+	defer func() {
+		wDisabled = false;
+		loop.Do(updateWindow);
+	}();
+
+	err := installJre(updateProgress);
+
+	if err != nil {
+		showErrorDialog(fmt.Sprintf("Error getting the JRE: %s", err), "Install JRE failed.");
+		return;
+	};
+
+	err = installGame(wCommune.SelectedVersion, wCommune.Patchline, updateProgress);
+
+	if err != nil {
+		showErrorDialog(fmt.Sprintf("Error getting the game: %s", err), "Install game failed.");
+		return;
+	};
+
+	err = launchGame(wCommune.SelectedVersion, wCommune.Patchline, wCommune.Username, usernameToUuid(wCommune.Username));
+
+	if err != nil {
+		showErrorDialog(fmt.Sprintf("Error running the game: %s", err), "Run game failed.");
+		return;
+	};
+}
+
 func patchLineMenu() base.Widget {
 	return &goey.VBox{
 		AlignMain: goey.SpaceBetween,
@@ -277,7 +297,7 @@ func versionMenu() base.Widget {
 	versions := goey.SelectInput {
 		OnChange: func(v int) {
 			wCommune.SelectedVersion = v+1;
-			updateWindow()
+			updateWindow();
 		},
 		Disabled: wDisabled,
 	};
@@ -322,11 +342,11 @@ func versionMenu() base.Widget {
 								installDir := getVersionInstallPath(selectedVersion, wCommune.Patchline);
 								err := os.RemoveAll(installDir);
 								if err != nil {
-									fmt.Printf("failed to remove: %s", err);
-									wMainWin.Message(fmt.Sprintf("failed to remove: %s", err)).WithError().WithTitle("Failed to remove").Show();
+									showErrorDialog(fmt.Sprintf("failed to remove: %s", err), "failed to remove");
 								}
+
 								wDisabled = false;
-								updateWindow();
+								loop.Do(updateWindow);
 							}();
 						},
 					},
@@ -340,7 +360,6 @@ func installLocation() base.Widget {
 	return &goey.VBox {
 			AlignMain: goey.SpaceBetween,
 			Children: []base.Widget {
-				&goey.HR{},
 				&goey.Label{ Text: "Install Location:" },
 				&goey.HBox{
 					AlignCross: goey.CrossCenter,
@@ -363,8 +382,7 @@ func installLocation() base.Widget {
 								dir, err := dialog.Directory().Title("Select install location").Browse();
 								if err != nil {
 									if err != dialog.ErrCancelled {
-										errorMsg := fmt.Sprintf("Failed: %s", err);
-										wMainWin.Message(errorMsg).WithError().WithTitle("Error reading directory.").Show();
+										showErrorDialog(fmt.Sprintf("Failed: %s", err), "Error reading directory");
 									}
 								}
 
@@ -412,7 +430,6 @@ func modeSelector () base.Widget {
 						case 2:
 							wCommune.Mode = "authenticated";
 					}
-
 					updateWindow();
 				},
 			},
@@ -439,28 +456,26 @@ func usernameBox() base.Widget {
 	};
 }
 
-func loginBox() base.Widget {
-
-	logoutDisabled := wDisabled || wCommune.AuthTokens == nil;
-	loginDisabled := wDisabled || wCommune.AuthTokens != nil;
-	profileList := []string{};
+func authLoginBox() base.Widget {
 
 	if wCommune.Mode != "authenticated" {
-		return &goey.Empty{};
+		return &goey.Empty{}
 	}
+
+	logoutDisabled := wDisabled || (wCommune.AuthTokens == nil);
+	loginDisabled := wDisabled || (wCommune.AuthTokens != nil);
+	profileList := []string{};
 
 	if wCommune.Profiles != nil {
 		for _, profile := range *wCommune.Profiles {
 			profileList = append(profileList, profile.Username);
 		}
 	}
-
 	profilesDisabled := wDisabled || wCommune.Profiles == nil;
-
-
 	return &goey.VBox {
 		AlignMain: goey.MainStart,
 		Children: []base.Widget {
+			&goey.HR{},
 			&goey.HBox{
 				AlignCross: goey.CrossCenter,
 				AlignMain: goey.Homogeneous,
@@ -484,15 +499,15 @@ func loginBox() base.Widget {
 					},
 				},
 			},
+			&goey.Label{
+				Text: "Select profile",
+			},
 			&goey.SelectInput{
 				Items: profileList,
 				OnChange: func(v int) {
 					wCommune.SelectedProfile = v;
 					wCommune.Username = profileList[v];
-					loop.Do(func() error {
-						updateWindow();
-						return nil;
-					});
+					updateWindow();
 				},
 				Value: wCommune.SelectedProfile,
 				Disabled: profilesDisabled,
@@ -507,28 +522,84 @@ func updateProgress(done int64, total int64) {
 	newProgress := int((float64(done) / float64(total)) * 100.0);
 
 	if newProgress != lastProgress {
-		wProgress = newProgress
-		loop.Do(func() error {
-			updateWindow();
-			return nil;
-		});
+		wProgress = newProgress;
+		loop.Do(updateWindow);
 	}
 }
 
+func createDownloadProgress () base.Widget {
+	return &goey.Progress{
+		Value: wProgress,
+		Min: 0,
+		Max: 100,
+	};
+}
+
+func drawStartGame() base.Widget{
+	return &goey.VBox {
+		AlignMain: goey.MainStart,
+		Children: []base.Widget {
+			usernameBox(),
+			patchLineMenu(),
+			versionMenu(),
+			createDownloadProgress(),
+			&goey.Button{
+				Text: "Start Game",
+				Disabled: wDisabled,
+				OnClick: func() {
+					go startGame();
+				},
+			},
+		},
+	}
+}
+
+func drawSettings() base.Widget{
+	return &goey.VBox{
+		AlignMain: goey.MainStart,
+		Children: []base.Widget {
+			&goey.HR{},
+			installLocation(),
+			modeSelector(),
+			authLoginBox(),
+		},
+	};
+}
+
+func drawWidgets() base.Widget {
+	return &goey.VBox {
+				AlignMain: goey.MainStart,
+				Children: []base.Widget {
+					&goey.Padding{
+						Insets: goey.DefaultInsets(),
+						Child: &goey.Align{
+							HAlign: goey.AlignCenter,
+							Child: &goey.VBox {
+								AlignMain: goey.MainStart,
+								Children: []base.Widget {
+									drawStartGame(),
+									drawSettings(),
+								},
+							},
+						},
+					},
+				},
+			}
+}
+
 func createWindow() error {
-	w, err := windows.NewWindow("HytaleSP", renderWindow())
+
+	win, err := windows.NewWindow("HytaleSP", drawWidgets())
 	if err != nil {
 		return err
 	}
 
-	w.SetScroll(false, false);
+	win.SetScroll(false, false);
 
-	w.SetOnClosing(func() bool {
-			writeSettings();
-			return false;
+	win.SetOnClosing(func() bool {
+		writeSettings();
+		return false;
 	});
-
-	wMainWin = w;
 
 
 	f, err := embeddedImages.Open(path.Join("Resources", "icon.png"));
@@ -538,101 +609,33 @@ func createWindow() error {
 	defer f.Close()
 
 	image, _, err := image.Decode(f)
-	w.SetIcon(image);
+	win.SetIcon(image);
+
+	wMainWin = win;
 
 	return nil
 }
 
-
-func updateWindow() {
-	err := wMainWin.SetChild(renderWindow())
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+func updateWindow() error {
+	if wMainWin == nil {
+		return fmt.Errorf("Failed to update window because the window ptr is nil.");
 	}
+
+	err := wMainWin.SetChild(drawWidgets());
+	if err != nil {
+		showErrorDialog(fmt.Sprintf("error updating window: %s", err), "error updating window");
+		return err;
+	}
+	return nil;
 }
 
 func showErrorDialog(msg string, title string) {
 		loop.Do(func() error {
 			wMainWin.Message(msg).WithError().WithTitle(title).Show();
 			return nil;
-		})
-
+		});
 }
 
-func renderWindow() base.Widget {
-	return &goey.Padding{
-		Insets: goey.DefaultInsets(),
-		Child: &goey.Align{
-			Child: &goey.VBox{
-				AlignMain: goey.MainStart,
-				Children: []base.Widget{
-
-					usernameBox(),
-					patchLineMenu(),
-					versionMenu(),
-
-					&goey.Progress{
-						Value: wProgress,
-						Min: 0,
-						Max: 100,
-					},
-					&goey.Button{
-						Text: "Start Game",
-						Disabled: wDisabled,
-						OnClick: func() {
-							go func() {
-
-								// disable the current window
-								loop.Do(func() error {
-									wDisabled = true;
-									updateWindow();
-									return nil;
-								});
-
-
-								// enable the window again once done
-								defer func() {
-									wDisabled = false;
-									loop.Do(func() error {
-										updateWindow();
-										return nil;
-									});
-								}();
-
-								err := installJre(updateProgress);
-
-								if err != nil {
-									showErrorDialog(fmt.Sprintf("Error getting the JRE: %s", err), "Install JRE failed.");
-									return;
-								};
-
-								err = installGame(wCommune.SelectedVersion, wCommune.Patchline, updateProgress);
-
-								if err != nil {
-									showErrorDialog(fmt.Sprintf("Error getting the game: %s", err), "Install game failed.");
-									return;
-								};
-
-								err = launchGame(wCommune.SelectedVersion, wCommune.Patchline, wCommune.Username, usernameToUuid(wCommune.Username));
-
-								if err != nil {
-									showErrorDialog(fmt.Sprintf("Error running the game: %s", err), "Run game failed.");
-									return;
-								};
-
-							}();
-
-
-						},
-					},
-					installLocation(),
-					modeSelector(),
-					loginBox(),
-				},
-			},
-		},
-	}
-}
 
 
 
