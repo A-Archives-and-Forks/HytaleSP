@@ -89,9 +89,9 @@ func readCosmetics() string {
 	// get currently installed gane folder ...
 
 	patchline := wCommune.Patchline;
-	selectedVersion := wCommune.SelectedVersion;
+	gotVersion := int(wCommune.SelectedVersion);
 
-	assetsZip := filepath.Join( getVersionInstallPath(selectedVersion, patchline), "Assets.zip" );
+	assetsZip := filepath.Join(getVersionInstallPath(gotVersion, patchline), "Assets.zip" );
 
 	zf, err := zip.OpenReader(assetsZip);
 	if err != nil {
@@ -337,7 +337,7 @@ func make_jwt(body any) string {
 
 func getUUID() string{
 	r, err := regexp.MatchString("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", strings.ToLower(wCommune.UUID));
-	if err == nil || r == false{
+	if err != nil || r == false{
 		m := md5.New();
 		m.Write([]byte(wCommune.Username));
 		h := hex.EncodeToString(m.Sum(nil));
