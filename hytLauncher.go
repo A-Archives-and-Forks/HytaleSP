@@ -176,6 +176,8 @@ func installJre(progress func(done int64, total int64)) error{
 	unpack := getJrePath(runtime.GOOS, runtime.GOARCH);
 
 	err = download(downloadUrl, save, progress);
+	defer os.Remove(save);
+
 	if err != nil {
 		return err;
 	}
@@ -200,12 +202,14 @@ func installJre(progress func(done int64, total int64)) error{
 
 	f, err := os.Open(save);
 	if err != nil {
+		os.RemoveAll(unpack);
 		return err;
 	}
 
 	err = unpackit.Unpack(f, unpack);
 
 	if(err != nil) {
+		os.RemoveAll(unpack);
 		return err;
 	}
 
@@ -284,11 +288,11 @@ func installGame(version int, channel string, progress func(done int64, total in
 		if err != nil {
 			return err;
 		}
-
 		os.MkdirAll(unpack, 0775);
 
 		err = applyPatch(srcPath, unpack, save, saveSig);
 		if err != nil {
+			err := os.RemoveAll(unpack);
 			return err;
 		}
 

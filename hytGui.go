@@ -1,5 +1,3 @@
-//go:generate goversioninfo
-
 package main
 
 import (
@@ -71,10 +69,29 @@ var (
 	wProgress float32 = 0.0
 	wDisabled = false
 	wSelectedTab = 0
-
+	wInstalledVersions map[string]map[int]bool = map[string]map[int]bool{
+		"release" : map[int]bool{},
+		"pre-release" : map[int]bool{},
+	}
 	wImGuiWindow *giu.WindowWidget = nil;
 )
 
+func cacheVersionList() {
+
+	channel := "release"
+	latest := wCommune.LatestVersions[channel];
+
+	for i := range latest {
+		wInstalledVersions[channel][i+1] = isGameVersionInstalled(i+1, channel)
+	}
+
+	channel = "pre-release"
+	latest = wCommune.LatestVersions[channel];
+
+	for i := range latest {
+		wInstalledVersions[channel][i+1] = isGameVersionInstalled(i+1, channel)
+	}
+}
 
 func getWindowWidth() float32 {
 	vec2 := imgui.ContentRegionAvail();
@@ -264,6 +281,9 @@ func startGame() {
 		wDisabled = false;
 	}();
 
+	ver := int(wCommune.SelectedVersion+1);
+	channel := valToChannel(int(wCommune.Patchline));
+
 	err := installJre(updateProgress);
 
 	if err != nil {
@@ -271,14 +291,18 @@ func startGame() {
 		return;
 	};
 
-	err = installGame(int(wCommune.SelectedVersion+1), valToChannel(int(wCommune.Patchline)), updateProgress);
+	if !wInstalledVersions[channel][ver] {
+		err = installGame(ver, valToChannel(int(wCommune.Patchline)), updateProgress);
 
-	if err != nil {
-		showErrorDialog(fmt.Sprintf("Error getting the game: %s", err), "Install game failed.");
-		return;
-	};
+		if err != nil {
+			showErrorDialog(fmt.Sprintf("Error getting the game: %s", err), "Install game failed.");
+			return;
+		};
 
-	err = launchGame(int(wCommune.SelectedVersion+1), valToChannel(int(wCommune.Patchline)), wCommune.Username, getUUID());
+		wInstalledVersions[channel][ver] = true;
+	}
+
+	err = launchGame(ver, channel, wCommune.Username, getUUID());
 
 	if err != nil {
 		showErrorDialog(fmt.Sprintf("Error running the game: %s", err), "Run game failed.");
@@ -297,45 +321,46 @@ func patchLineMenu() giu.Widget {
 	}
 }
 
+
 func versionMenu() giu.Widget {
 	versions := []string {};
 	selectedChannel := valToChannel(int(wCommune.Patchline));
 	selectedVersion := int(wCommune.SelectedVersion+1);
 
 	latest := wCommune.LatestVersions[selectedChannel];
-
 	for i := range latest {
 		txt := "Version "+strconv.Itoa(i+1);
-		if isGameVersionInstalled(i+1, selectedChannel) {
+		if wInstalledVersions[selectedChannel][i+1] {
 			txt += " - installed";
 		} else {
 			txt += " - not installed";
 		}
 		versions = append(versions, txt);
 	}
-	disabled := !isGameVersionInstalled(selectedVersion, selectedChannel) || wDisabled;
-;
+	buttondisabled := !wInstalledVersions[selectedChannel][selectedVersion] || wDisabled;
 
 	bSize := getButtonSize("Delete")
 	padX, _ := giu.GetWindowPadding();
-
 
 
 	return giu.Layout{
 		giu.Label("Version: "),
 		giu.Row(
 			giu.Combo("##version", versions[int(wCommune.SelectedVersion) % len(versions)], versions, &wCommune.SelectedVersion).Size(getWindowWidth() - (bSize + padX)),
-			giu.Button("Delete").Disabled(disabled).OnClick(func() {
+			giu.Button("Delete").Disabled(buttondisabled).OnClick(func() {
 				wDisabled = true;
 
 				go func() {
+					defer func() { wDisabled = false; }();
+
 					installDir := getVersionInstallPath(selectedVersion, selectedChannel);
 					err := os.RemoveAll(installDir);
 					if err != nil {
 						showErrorDialog(fmt.Sprintf("failed to remove: %s", err), "failed to remove");
+						return;
 					}
 
-					wDisabled = false;
+					wInstalledVersions[selectedChannel][selectedVersion] = false;
 				}();
 			}),
 		),
@@ -559,12 +584,14 @@ func main() {
 	os.MkdirAll(MainFolder(), 0775);
 	os.MkdirAll(LauncherFolder(), 0775);
 	os.MkdirAll(ServerDataFolder(), 0775);
+
 	readSettings();
 
 	os.MkdirAll(UserDataFolder(), 0775);
 	os.MkdirAll(JreFolder(), 0775);
 	os.MkdirAll(GameFolder(), 0775);
 
+	cacheVersionList();
 	go reAuthenticate();
 	go checkForUpdates();
 
