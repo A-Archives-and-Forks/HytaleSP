@@ -570,9 +570,9 @@ func drawWidgets() {
 			giu.TabItem("Settings").Layout(
 				drawSettings(),
 			),
-			giu.TabItem("Mods").Layout(
+			/*giu.TabItem("Mods").Layout(
 				giu.Custom(func(){}),
-			),
+			),*/
 		),
 	)
 }
