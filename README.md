@@ -63,6 +63,8 @@ meaning all players would have to use the 'fake online' option in this (or anoth
 
 there are server side plugins that can get around this restriction.
 
+as an example you try join the server: ``server.diamondbyte.org:5521``
+
 # Alternative names
 Originally, i called it "hytLauncher", being a play on "TLauncher" for minecraft;
 however i found that, alot of other alternative hytale launchers had a simular name, (eg HyTaLauncher, HyLauncher, etc.)
