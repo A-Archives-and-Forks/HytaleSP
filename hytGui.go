@@ -55,7 +55,7 @@ var (
 			"release": 7,
 			"pre-release": 17,
 		},
-		SelectedVersion: 6,
+		SelectedVersion: 0,
 		Mode: E_MODE_FAKEONLINE,
 		AuthTokens: nil,
 		Profiles: nil,
@@ -143,10 +143,17 @@ func checkForUpdates() {
 		writeSettings();
 		cacheVersionList()
 
+		latestVersion := 1;
+
 		if wCommune.Patchline == E_PATCH_PRE_RELEASE {
-			wCommune.SelectedVersion = int32(latestPreRelease)-1;
+			latestVersion = int(latestPreRelease)-1;
 		} else {
-			wCommune.SelectedVersion = int32(latestRelease)-1;
+			latestVersion = int(latestRelease)-1;
+		}
+
+
+		if wCommune.SelectedVersion <= 0 && int(wCommune.SelectedVersion) > latestVersion {
+			wCommune.SelectedVersion = int32(latestVersion);
 		}
 	}
 }
