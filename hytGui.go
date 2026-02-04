@@ -55,7 +55,7 @@ var (
 			"release": 7,
 			"pre-release": 17,
 		},
-		SelectedVersion: 7-1,
+		SelectedVersion: 6,
 		Mode: E_MODE_FAKEONLINE,
 		AuthTokens: nil,
 		Profiles: nil,
@@ -141,7 +141,13 @@ func checkForUpdates() {
 		}
 
 		writeSettings();
-		cacheVersionList();
+		cacheVersionList()
+
+		if wCommune.Patchline == E_PATCH_PRE_RELEASE {
+			wCommune.SelectedVersion = int32(latestPreRelease)-1;
+		} else {
+			wCommune.SelectedVersion = int32(latestRelease)-1;
+		}
 	}
 }
 
@@ -570,6 +576,9 @@ func drawWidgets() {
 			giu.TabItem("Settings").Layout(
 				drawSettings(),
 			),
+			/*giu.TabItem("Mods").Layout(
+				giu.Custom(func(){}),
+			),*/
 		),
 	)
 }
