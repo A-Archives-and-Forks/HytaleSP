@@ -12,7 +12,7 @@ import (
 
 	"github.com/AllenDang/cimgui-go/imgui"
 	"github.com/AllenDang/giu"
-	"github.com/sqweek/dialog"
+	"github.com/ncruces/zenity"
 )
 
 type launcherCommune struct {
@@ -394,9 +394,9 @@ func browseButton(label string, value *string, callback func()) giu.Widget {
 	}
 
 	button := giu.Button("Browse").OnClick(func() {
-		dir, err := dialog.Directory().Title("Select "+label).Browse();
+		dir, err := zenity.SelectFile(zenity.Directory());
 		if err != nil {
-			if err != dialog.ErrCancelled {
+			if err != zenity.ErrCanceled {
 				showErrorDialog(fmt.Sprintf("Failed: %s", err), "Error reading directory");
 			}
 		}
@@ -592,12 +592,12 @@ func createWindow() error {
 
 		// warn about closing hytale while the auth server emulator is still running.
 		if wGameRunning && wCommune.Mode == E_MODE_FAKEONLINE {
-			dlg := dialog.Message("WAIT! Hytale is still running!!!\nso .. if you close HytaleSP now-\nThe game will report \"Session Expired\" and revert to \"Offline Mode\"\nand as such; you will not be able to join servers or edit your avatar\nuntil the game is restarted ..\nDo you really want to close HytaleSP ??")
-			dlg.Title("Hytale is still running!");
-			if dlg.YesNo() {
-				return true;
-			} else {
+			err := zenity.Question("WAIT! Hytale is still running!!!\nso .. if you close HytaleSP now-\nThe game will report \"Session Expired\"\nand revert to \"Offline Mode\"\nand as such; you will not be able to join servers or edit your avatar\nuntil the game is restarted ..\nDo you really want to close HytaleSP ??", zenity.Title("Hytale is still running"), zenity.QuestionIcon, zenity.OKLabel("Yes"), zenity.CancelLabel("No"));
+
+			if err == zenity.ErrCanceled {
 				return false;
+			} else {
+				return true;
 			}
 		}
 
@@ -623,9 +623,7 @@ func createWindow() error {
 
 
 func showErrorDialog(msg string, title string) {
-		dlg := dialog.Message(msg);
-		dlg.Title(title);
-		dlg.Error();
+	zenity.Error(msg, zenity.Title(title), zenity.ErrorIcon);
 }
 
 

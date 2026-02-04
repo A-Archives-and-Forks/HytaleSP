@@ -7,17 +7,19 @@ require (
 	github.com/AllenDang/giu v0.14.1
 	github.com/c4milo/unpackit v1.0.0
 	github.com/google/uuid v1.6.0
+	github.com/itchio/headway v0.0.0-20251229214354-da882c8b5dd4
 	github.com/itchio/lake v0.0.0-20200305150023-cc4284ec2b2a
 	github.com/itchio/savior v0.0.0-20260123030821-db2e1fb13dca
 	github.com/itchio/wharf v0.0.0-20260121214545-5e5efc838cdb
-	github.com/sqweek/dialog v0.0.0-20260123140253-64c163d53aac
+	github.com/ncruces/zenity v0.10.14
 )
 
 require (
 	github.com/AllenDang/go-findfont v0.0.0-20200702051237-9f180485aeb8 // indirect
-	github.com/TheTitanrain/w32 v0.0.0-20180517000239-4f5cfb03fabf // indirect
+	github.com/akavel/rsrc v0.10.2 // indirect
 	github.com/certifi/gocertifi v0.0.0-20210507211836-431795d63e8d // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/dchest/jsmin v0.0.0-20220218165748-59f39799265f // indirect
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/efarrer/iothrottler v0.0.3 // indirect
@@ -40,12 +42,12 @@ require (
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/itchio/arkive v0.0.0-20260123020546-e17bae820608 // indirect
 	github.com/itchio/dskompress v0.0.0-20190702113811-5e6f499be697 // indirect
-	github.com/itchio/headway v0.0.0-20251229214354-da882c8b5dd4 // indirect
 	github.com/itchio/httpkit v0.0.0-20251231162950-9fb57e6ac916 // indirect
 	github.com/itchio/kompress v0.0.0-20200301155538-5c2eecce9e51 // indirect
 	github.com/itchio/ox v0.0.0-20200826161350-12c6ca18d236 // indirect
 	github.com/itchio/screw v0.0.0-20200301160148-75fc2d65fb38 // indirect
 	github.com/jgallagher/gosaca v0.0.0-20130226042358-754749770f08 // indirect
+	github.com/josephspurrier/goversioninfo v1.4.1 // indirect
 	github.com/klauspost/compress v1.18.3 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
 	github.com/mazznoer/csscolorparser v0.1.6 // indirect
@@ -55,6 +57,7 @@ require (
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/randall77/makefat v0.0.0-20210315173500-7ddd0e42c844 // indirect
 	github.com/sahilm/fuzzy v0.1.1 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
