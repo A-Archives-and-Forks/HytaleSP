@@ -55,7 +55,7 @@ var (
 			"release": 7,
 			"pre-release": 17,
 		},
-		SelectedVersion: 0,
+		SelectedVersion: -1,
 		Mode: E_MODE_FAKEONLINE,
 		AuthTokens: nil,
 		Profiles: nil,
@@ -140,10 +140,11 @@ func checkForUpdates() {
 			wCommune.LatestVersions["pre-release"] = latestPreRelease;
 		}
 
+		updateSelectedVerison();
+
 		writeSettings();
 		cacheVersionList()
 
-		updateSelectedVerison();
 	}
 }
 
@@ -157,7 +158,7 @@ func updateSelectedVerison() {
 		latestVersion = int(wCommune.LatestVersions["release"])-1;
 	}
 
-	if wCommune.SelectedVersion <= 0 && int(wCommune.SelectedVersion) > latestVersion {
+	if wCommune.SelectedVersion < 0 || int(wCommune.SelectedVersion) > latestVersion {
 		wCommune.SelectedVersion = int32(latestVersion);
 	}
 }
@@ -195,10 +196,10 @@ func authenticatedCheckForUpdatesAndGetProfileList() {
 	}
 
 	wCommune.Profiles = &lData.Profiles;
+	updateSelectedVerison();
 
 	writeSettings();
 	cacheVersionList();
-	updateSelectedVerison();
 
 }
 
