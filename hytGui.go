@@ -368,11 +368,17 @@ func versionMenu() giu.Widget {
 	bSize := getButtonSize("Delete")
 	padX, _ := giu.GetWindowPadding();
 
+	showVersion := int(wCommune.SelectedVersion);
+	if showVersion < 0{
+		showVersion = 0;
+	} else if showVersion > len(versions) {
+		showVersion = len(versions);
+	}
 
 	return giu.Layout{
 		giu.Label("Version: "),
 		giu.Row(
-			giu.Combo("##version", versions[int(wCommune.SelectedVersion) % len(versions)], versions, &wCommune.SelectedVersion).Size(getWindowWidth() - (bSize + padX)),
+			giu.Combo("##version", versions[showVersion], versions, &wCommune.SelectedVersion).Size(getWindowWidth() - (bSize + padX)),
 			giu.Button("Delete").Disabled(buttondisabled).OnClick(func() {
 				wDisabled = true;
 
