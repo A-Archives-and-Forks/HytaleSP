@@ -14,6 +14,6 @@ REM go generate
 
 REM build with subsystem:windows
 windres Resources\res.rc -O coff -o resources.syso
-go build -ldflags="-s -w -buildid= -H=windowsgui -extldflags=-static" -trimpath
+go build -ldflags="-s -w -H=windowsgui -extldflags=-static" -trimpath
 
 

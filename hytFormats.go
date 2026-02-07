@@ -18,7 +18,6 @@ type patchlines struct {
 	Release    gameVersion    `json:"release"`
 }
 
-
 type accountInfo struct {
 	CreatedAt        time.Time `json:"createdAt"`
 	Entitlements     []string  `json:"entitlements"`
@@ -27,6 +26,7 @@ type accountInfo struct {
 	Username         string    `json:"username"`
 	UUID             string    `json:"uuid"`
 }
+
 // there is more to it than this, this is just all we have to care about ...
 type cosmeticDefinition struct {
 	Id string `json:"Id"`
@@ -69,7 +69,6 @@ type versionManifest struct {
 	Steps []versionStep `json:"steps"`
 }
 
-
 type sessNewRequest struct {
 	UUID string `json:"uuid"`
 }
@@ -97,4 +96,19 @@ type sessionNew struct {
 	ExpiresAt     time.Time `json:"expiresAt"`
 	IdentityToken string    `json:"identityToken"`
 	SessionToken  string    `json:"sessionToken"`
+}
+
+type skinList struct {
+	ActiveSkin string  `json:"activeSkin"`
+	MaxSkins   int     `json:"maxSkins"`
+	Skins      []skinDefinition `json:"skins"`
+}
+type skinDefinition struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	SkinData string `json:"skinData"`
+}
+
+type skinIdentifier struct {
+	SkinID string `json:"skinId"`
 }

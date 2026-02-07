@@ -314,7 +314,6 @@ void* hook_export_func(const char* targetModuleName, const char* targetFunctionN
 	IMAGE_DATA_DIRECTORY dataDirectory = nthdr->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
 	IMAGE_IMPORT_DESCRIPTOR* importDescriptor = (IMAGE_IMPORT_DESCRIPTOR*)(base.start + dataDirectory.VirtualAddress);
 
-
 	for (int i = 0; importDescriptor[i].Characteristics != 0; i++)
 	{
 		char* moduleName = (char*)(base.start + importDescriptor[i].Name);

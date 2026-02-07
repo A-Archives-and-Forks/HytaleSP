@@ -216,7 +216,6 @@ func getAuthTokens(previousTokens any) (atoken accessTokens, err error) {
 	prevTokens, ok := previousTokens.(accessTokens);
 
 	if ok {
-		fmt.Println("Refreshing previous tokens");
 		aToken, err := refreshToken(prevTokens.RefreshToken);
 		if err != nil {
 			return accessTokens{}, nil;

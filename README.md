@@ -32,38 +32,47 @@ hytFormats.go - most of the JSON structures used by hytale are here;
 
 hytClient.go - downloading versions, etc
 
-patch.go - itch.io's 'apply patch' wharf code
+hytPatch.go - itch.io's 'apply patch' wharf code
 
-jwt.go - JSON structures used in hytale auth tokens
+hytJwt.go - JSON structures used in hytale auth tokens
 
-locations.go - default / location resolvers for many folders
+hytLocations.go - default / Location resolvers for many folders and directories used by the game
 
+hytGui.go - Graphical user interface and general code to start the game
 
-Aurora/ - c code for the dll or shared object, loaded with the game, 
-that replaces account-data.hytale.com with a custom server .. 
+hytCli.go - Command line handling
+
+Resources/ - resource scripts, icons, images, manifest files, etc;
+
+Flatpak
+
+Aurora/ - c code for the dll or shared object, loaded with the game, it replaces http://hytale.com with http://localhost/
 
 # Building
 
 on windows, you first have to build the "Aurora.dll" using MSVC, 
 and then you can use ``go build .``
+
 or you can ``build-windows.bat`` within the VS2026 developer command prompt to do this;
 
 on linux, you need ``build-essential`` and then you can build "Aurora.so" using its Makefile;
+
 after that you can use ``go build .`` 
+
 or you can use ``build-linux.sh``
 
 # Online Multiplayer 
 
-When using the "fake online" option, 
-you CAN play online multiplayer; BUT you can only join servers with the command-line flag ``--auth-mode=insecure`` set; 
-this is much simular to how minecraft works where you can only join servers with ``offline_mode=true`` in the server.properties
+When using the "fake online" option, you CAN play online multiplayer; 
+BUT only if the server is setup specifically so you can play on it; i.e "cracked servers"
 
-however unlike minecraft, players using the offical game are actually unable to join "insecure" servers,
-meaning all players would have to use the 'fake online' option in this (or another) launcher to play on these servers.
+if your using local multiplayer or "game codes", with other users of HytaleSP;
+then that should just work,
 
-there are server side plugins that can get around this restriction.
+you cannot play with users using "Authenticated" mode, or the offical launcher!
+for more information about this, see [SERVER.md](SERVER.md)
 
-as an example you try join the server: ``server.diamondbyte.org:5521``
+An example server you can try is; ``server.diamondbyte.org:5521``
 
 # Alternative names
 Originally, i called it "hytLauncher", being a play on "TLauncher" for minecraft;

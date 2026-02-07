@@ -26,7 +26,7 @@ func urlToPath(targetUrl string) string {
 	return npath;
 }
 
-func download(targetUrl string, saveFilename string, progress func(done int64, total int64)) error {
+func download(targetUrl string, saveFilename string, onProgress func(done int64, total int64)) error {
 	fmt.Printf("Downloading %s\n", targetUrl);
 
 	os.MkdirAll(filepath.Dir(saveFilename), 0775);
@@ -55,7 +55,7 @@ func download(targetUrl string, saveFilename string, progress func(done int64, t
 		}
 		done += int64(rd);
 		f.Write(buffer[:rd]);
-		progress(done, total);
+		onProgress(done, total);
 	}
 
 	return nil;
@@ -86,14 +86,18 @@ func getJrePath(operatingSystem string, architecture string) string {
 	return fp;
 }
 
-func getJreDownloadPath(operatingSystem string, architecture string, downloadUrl string) string {
-	u, _ := url.Parse(downloadUrl);
-	fp := filepath.Join(JreFolder(), "download", operatingSystem, architecture, path.Base(u.Path));
+func getJreDownloadPath(operatingSystem string) string {
+	ext := ".zip";
+	if operatingSystem == "linux" || operatingSystem == "darwin" {
+		ext = ".tar.gz";
+	}
+
+	fp := filepath.Join(JreFolder(), "download", "jre-download"+ext);
 	return fp;
 }
 
 
-func downloadLatestVersion(atokens accessTokens, architecture string, operatingSystem string, channel string, fromVersion int, progress func(done int64, total int64)) error {
+func downloadLatestVersion(atokens accessTokens, architecture string, operatingSystem string, channel string, fromVersion int, onProgress func(done int64, total int64)) error {
 	fmt.Printf("Start version: %d\n", fromVersion);
 	manifest, err := getVersionManifest(atokens, architecture, operatingSystem, channel, fromVersion);
 
@@ -103,7 +107,7 @@ func downloadLatestVersion(atokens accessTokens, architecture string, operatingS
 
 	for _, step := range manifest.Steps {
 		save := getVersionDownloadPath(step.From, step.To, channel);
-		return download(step.Pwr, save, progress);
+		return download(step.Pwr, save, onProgress);
 	}
 	return errors.New("Could not locate latest version");
 }
@@ -148,21 +152,15 @@ func verifyFileSha256(fp string, expected string) bool {
 	return strings.EqualFold(hex.EncodeToString(digest), strings.ToLower(expected));
 }
 
-func installJre(progress func(done int64, total int64)) error{
-
-	if isJreInstalled() {
-		return nil;
-	}
-
+func installJreEx(operatingSystem string, out string, temp string, onProgress func(done int64, total int64)) error {
 	jres, err := getJres("release");
 	if err != nil {
 		return err;
 	}
 
-
 	var downloadUrl string;
 
-	switch(runtime.GOOS) {
+	switch(operatingSystem) {
 		case "windows":
 			downloadUrl = jres.DownloadUrls.Windows.Amd64.URL;
 		case "linux":
@@ -172,11 +170,10 @@ func installJre(progress func(done int64, total int64)) error{
 
 	}
 
-	save := getJreDownloadPath(runtime.GOOS, runtime.GOARCH, downloadUrl);
-	unpack := getJrePath(runtime.GOOS, runtime.GOARCH);
+	err = download(downloadUrl, temp, onProgress);
+	defer os.Remove(temp);
+	defer os.RemoveAll(filepath.Dir(temp));
 
-	err = download(downloadUrl, save, progress);
-	defer os.Remove(save);
 
 	if err != nil {
 		return err;
@@ -185,48 +182,52 @@ func installJre(progress func(done int64, total int64)) error{
 	valid := false;
 
 	// validate jre
-	switch(runtime.GOOS) {
+	switch(operatingSystem) {
 		case "windows":
-			valid = verifyFileSha256(save, jres.DownloadUrls.Windows.Amd64.Sha256);
+			valid = verifyFileSha256(temp, jres.DownloadUrls.Windows.Amd64.Sha256);
 		case "linux":
-			valid = verifyFileSha256(save, jres.DownloadUrls.Linux.Amd64.Sha256);
+			valid = verifyFileSha256(temp, jres.DownloadUrls.Linux.Amd64.Sha256);
 		case "darwin":
-			valid = verifyFileSha256(save, jres.DownloadUrls.Darwin.Arm64.Sha256);
+			valid = verifyFileSha256(temp, jres.DownloadUrls.Darwin.Arm64.Sha256);
 	}
 
 	if valid == false {
 		return fmt.Errorf("Could not validate the SHA256 hash for the JRE runtime.");
 	}
 
-	os.MkdirAll(unpack, 0775);
+	os.MkdirAll(out, 0775);
 
-	f, err := os.Open(save);
+	f, err := os.Open(temp);
 	if err != nil {
-		os.RemoveAll(unpack);
+		os.RemoveAll(out);
 		return err;
 	}
 
-	err = unpackit.Unpack(f, unpack);
+	err = unpackit.Unpack(f, out);
 
 	if(err != nil) {
-		os.RemoveAll(unpack);
+		os.RemoveAll(out);
 		return err;
 	}
 
-	os.Remove(save);
-	os.RemoveAll(filepath.Dir(save));
 	return nil;
+}
 
+func installJre(onProgress func(done int64, total int64)) error{
+	temp := getJreDownloadPath(runtime.GOOS);
+	out := getJrePath(runtime.GOOS, runtime.GOARCH);
+
+	return installJreEx(runtime.GOOS, out, temp, onProgress);
 }
 
 func findClosestVersion(targetVersion int, channel string) int {
 	installFolder := getVersionsFolder(channel);
 
-	fVersion := 0;
+	cloestVersion := 0;
 
 	d, err := os.ReadDir(installFolder);
 	if err != nil {
-		return fVersion;
+		return cloestVersion;
 	}
 
 	for _, e := range d {
@@ -240,65 +241,111 @@ func findClosestVersion(targetVersion int, channel string) int {
 			continue;
 		}
 
-		if ver > fVersion && ver < targetVersion {
-			fVersion = ver;
+		if ver > cloestVersion && ver < targetVersion {
+			cloestVersion = ver;
 		}
 	}
 
-	return fVersion;
+	return cloestVersion;
 
 }
 
-func installGame(version int, channel string, progress func(done int64, total int64)) error {
+func downloadAndRunGameEx(version int, channel string,
+			  onJreInstalled func(),
+			  onNewVersionInstalled func(channel string, ver int),
+			  onGameStarting func(),
+			  onGameClosing func(),
+			  onProgress func(done int64, total int64)) error {
+	// download new jre if not installed ..
 
-
-	if !isGameVersionInstalled(version, channel) {
-		closestVersion := findClosestVersion(version, channel);
-		srcPath := getVersionInstallPath(closestVersion, channel);
-
-		fmt.Printf("Closest version: %d\n", closestVersion);
-		fmt.Printf("Src Path: %s\n", srcPath);
-
-		downloadUrl := guessPatchUrlNoAuth(runtime.GOARCH, runtime.GOOS, channel, closestVersion, version);
-		downloadSig := guessPatchSigUrlNoAuth(runtime.GOARCH, runtime.GOOS, channel, closestVersion, version);
-
-		unpack := getVersionInstallPath(version, channel);
-		save := getVersionDownloadPath(closestVersion, version, channel);
-
-		// check if this patch exists, if not fallback on the 0 patch.
-		if !checkVerExist(closestVersion, version, runtime.GOARCH, runtime.GOOS, channel) {
-			downloadUrl = guessPatchUrlNoAuth(runtime.GOARCH, runtime.GOOS, channel, 0, version);
-			downloadSig = guessPatchSigUrlNoAuth(runtime.GOARCH, runtime.GOOS, channel, 0, version);
-			save = getVersionDownloadPath(0, version, channel);
-		}
-
-		saveSig := save + ".pwr";
-
-		err := download(downloadUrl, save, progress);
-		defer os.Remove(save);
-		defer os.RemoveAll(getVersionDownloadsFolder());
+	if !isJreInstalled() {
+		err := installJre(updateProgress);
 
 		if err != nil {
-			return err;
-		}
+			return fmt.Errorf("Error getting the JRE: %s", err);
+		};
 
-		err = download(downloadSig, saveSig, progress);
-		defer os.Remove(saveSig);
-
-		if err != nil {
-			return err;
-		}
-		os.MkdirAll(unpack, 0775);
-
-		err = applyPatch(srcPath, unpack, save, saveSig);
-		if err != nil {
-			err := os.RemoveAll(unpack);
-			return err;
-		}
-
-		return nil;
+		onJreInstalled();
 	}
+
+	// download new version if not installed ..
+	if !isGameVersionInstalled(version, channel) {
+		err := installGame(version, channel, onProgress);
+
+		if err != nil {
+			return fmt.Errorf("Error getting %s version %d: %s", channel, version, err);
+		};
+
+		onNewVersionInstalled(channel, version);
+	}
+
+	// start the game
+	onGameStarting();
+	defer onGameClosing();
+
+	err := launchGame(version, channel, wCommune.Username, getUUID());
+
+	if err != nil {
+		return fmt.Errorf("Error starting the game: %s", err);
+	};
+
 	return nil;
+
+}
+
+
+func downloadAndRunGame(version int, channel string, onProgress func(done int64, total int64)) error {
+	return downloadAndRunGameEx(version, channel, func(){}, func(string, int){}, func(){}, func(){}, cliProgressUpdate);
+}
+
+func installGameEx(startVersion int, endVersion int, channel string, operatingSystem string, architecture string, src string, out string, temp string, onProgress func(done int64, total int64)) error {
+
+	downloadUrl := guessPatchUrlNoAuth(architecture, operatingSystem, channel, startVersion, endVersion);
+	downloadSig := guessPatchSigUrlNoAuth(architecture, operatingSystem, channel, startVersion, endVersion);
+
+	sigPath := temp + ".sig";
+
+	err := download(downloadUrl, temp, onProgress);
+	defer os.Remove(temp);
+	defer os.Remove(sigPath);
+	defer os.RemoveAll(getVersionDownloadsFolder());
+
+	if err != nil {
+		return err;
+	}
+
+	err = download(downloadSig, sigPath, onProgress);
+	defer os.Remove(sigPath);
+
+	if err != nil {
+		return err;
+	}
+	os.MkdirAll(out, 0775);
+
+	fmt.Printf("Applying patch %s, using source: %s to: %s\n", temp, src, out);
+	err = applyPatch(src, out, temp, sigPath, onProgress);
+	if err != nil {
+		return err;
+	}
+
+	return nil;
+}
+
+func installGame(version int, channel string, onProgress func(done int64, total int64)) error {
+	closest := findClosestVersion(version, channel);
+	src := getVersionInstallPath(closest, channel);
+	apply := getVersionInstallPath(version, channel);
+	temp := getVersionDownloadPath(closest, version, channel);
+
+	// check if incremental patch file exists ...
+	if !checkVerExist(closest, version, runtime.GOARCH, runtime.GOOS, channel) {
+		closest = 0
+		src = getVersionInstallPath(closest, channel);
+		apply = getVersionInstallPath(version, channel);
+		temp = getVersionDownloadPath(closest, version, channel);
+	}
+
+	return installGameEx(closest, version, channel, runtime.GOOS, runtime.GOARCH, src, apply, temp, onProgress);
 }
 
 func findJavaBin() any {

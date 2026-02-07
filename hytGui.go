@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
+	"math/rand/v2"
 	"os"
 	"path"
 	"path/filepath"
@@ -32,19 +33,20 @@ type launcherCommune struct {
 	UserDataFolder string `json:"userdata_directory"`
 	JreFolder string `json:"jre_directory"`
 	UUID string `json:"uuid_override"`
+
+	FormatVersion int `json:"fmt_version"`
 }
 
 
 const DEFAULT_USERNAME = "TransRights";
 const DEFAULT_PATCHLINE = E_PATCH_RELEASE;
 
-
 const E_MODE_OFFLINE = 0;
 const E_MODE_FAKEONLINE = 1;
 const E_MODE_AUTHENTICATED = 2;
 
-const E_PATCH_RELEASE = 0
-const E_PATCH_PRE_RELEASE = 1
+const E_PATCH_RELEASE = 0;
+const E_PATCH_PRE_RELEASE = 1;
 
 var (
 	wMainWin *giu.MasterWindow
@@ -64,6 +66,7 @@ var (
 		GameFolder: DefaultGameFolder(),
 		UserDataFolder: DefaultUserDataFolder(),
 		JreFolder: DefaultJreFolder(),
+		FormatVersion: 0,
 		UUID: "",
 	};
 	wProgress float32 = 0.0
@@ -76,6 +79,26 @@ var (
 	}
 	wImGuiWindow *giu.WindowWidget = nil;
 )
+
+func getRandomUsername() string {
+
+	avalibleUsernames := []string {
+		"Trans Rights",
+		"Plural Rings",
+		"Free Palestine",
+		"Anarchy Now!",
+		"Hatsune Miku",
+		"Hypixel",
+		"Jeb_",
+		"Honeydew",
+		"SkyTheKidRS",
+		"Notch",
+	};
+
+	return avalibleUsernames[rand.IntN(len(avalibleUsernames))];
+
+}
+
 
 func cacheVersionList() {
 
@@ -126,9 +149,6 @@ func checkForUpdates() {
 
 		latestRelease := findLatestVersionNoAuth(lastRelease, runtime.GOARCH, runtime.GOOS, "release");
 		latestPreRelease := findLatestVersionNoAuth(lastPreRelease, runtime.GOARCH, runtime.GOOS, "pre-release");
-
-		fmt.Printf("latestRelease: %d\n", latestRelease);
-		fmt.Printf("latestPreRelease: %d\n", latestPreRelease);
 
 		if latestRelease > lastRelease {
 			fmt.Printf("Found new release version: %d\n", latestRelease);
@@ -220,7 +240,6 @@ func reAuthenticate() {
 }
 
 func writeSettings() {
-	fmt.Printf("Saving settings ...\n");
 	jlauncher, _ := json.Marshal(wCommune);
 
 	err := os.MkdirAll(filepath.Dir(getLauncherJson()), 0666);
@@ -262,13 +281,6 @@ func readSettings() {
 			wCommune.GameFolder = GameFolder();
 		}
 
-		fmt.Printf("Reading last settings: \n");
-		fmt.Printf("username: %s\n", wCommune.Username);
-		fmt.Printf("patchline: %s\n", valToChannel(int(wCommune.Patchline)));
-		fmt.Printf("last used version: %d\n", wCommune.SelectedVersion+1);
-		fmt.Printf("newest known release: %d\n", wCommune.LatestVersions["release"])
-		fmt.Printf("newest known pre-release: %d\n", wCommune.LatestVersions["pre-release"])
-
 	}
 }
 
@@ -308,15 +320,17 @@ func startGame() {
 	ver := int(wCommune.SelectedVersion+1);
 	channel := valToChannel(int(wCommune.Patchline));
 
-	err := installJre(updateProgress);
+	if !isJreInstalled() {
+		err := installJre(updateProgress);
 
-	if err != nil {
-		showErrorDialog(fmt.Sprintf("Error getting the JRE: %s", err), "Install JRE failed.");
-		return;
-	};
+		if err != nil {
+			showErrorDialog(fmt.Sprintf("Error getting the JRE: %s", err), "Install JRE failed.");
+			return;
+		};
+	}
 
-	if !wInstalledVersions[channel][ver] {
-		err = installGame(ver, valToChannel(int(wCommune.Patchline)), updateProgress);
+	if !isGameVersionInstalled(ver, valToChannel(int(wCommune.Patchline))) {
+		err := installGame(ver, valToChannel(int(wCommune.Patchline)), updateProgress);
 
 		if err != nil {
 			showErrorDialog(fmt.Sprintf("Error getting the game: %s", err), "Install game failed.");
@@ -328,7 +342,7 @@ func startGame() {
 
 	// set game running flag
 	wGameRunning = true;
-	err = launchGame(ver, channel, wCommune.Username, getUUID());
+	err := launchGame(ver, channel, wCommune.Username, getUUID());
 
 	if err != nil {
 		showErrorDialog(fmt.Sprintf("Error running the game: %s", err), "Run game failed.");
@@ -549,7 +563,21 @@ func drawStartGame() giu.Widget{
 			),
 			createDownloadProgress(),
 			giu.Button("Start Game").Disabled(startGameDisabled).OnClick(func() {
-				go startGame();
+				go func() {
+					wDisabled = true;
+					defer func() {wDisabled = false;}();
+
+					err := downloadAndRunGameEx(int(wCommune.SelectedVersion)+1, valToChannel(int(wCommune.Patchline)),
+							func() {},
+							func(channel string, version int){wInstalledVersions[channel][version] = true},
+							func() {wGameRunning = true},
+							func() {wGameRunning = false},
+							updateProgress);
+					if err != nil {
+						showErrorDialog(fmt.Sprintf("Error: %s", err), "Error launching the game");
+					}
+
+				}();
 			}).Size(getWindowWidth(), 0),
 	}
 }
@@ -655,6 +683,13 @@ func showErrorDialog(msg string, title string) {
 
 func main() {
 
+	if len(os.Args) > 1 {
+		ret := handleCli(os.Args);
+		if ret <= 0 {
+			os.Exit(ret);
+		}
+	}
+
 	os.MkdirAll(MainFolder(), 0775);
 	os.MkdirAll(LauncherFolder(), 0775);
 	os.MkdirAll(ServerDataFolder(), 0775);
@@ -668,6 +703,8 @@ func main() {
 	cacheVersionList();
 	go reAuthenticate();
 	go checkForUpdates();
+
+	dataFixerUpper(wCommune.FormatVersion);
 
 	err := createWindow();
 	if err != nil {
