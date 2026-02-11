@@ -28,8 +28,6 @@ const DEFAULT_COSMETICS = "{\"bodyCharacteristic\":[\"Default\",\"Muscular\"],\"
 
 const DEFAULT_SKIN = "{\"bodyCharacteristic\":\"Default.11\",\"underwear\":\"Bra.Blue\",\"face\":\"Face_Neutral\",\"ears\":\"Ogre_Ears\",\"mouth\":\"Mouth_Makeup\",\"haircut\":\"SideBuns.Black\",\"facialHair\":null,\"eyebrows\":\"RoundThin.Black\",\"eyes\":\"Plain_Eyes.Green\",\"pants\":\"Icecream_Skirt.Strawberry\",\"overpants\":\"LongSocks_Bow.Lime\",\"undertop\":\"VNeck_Shirt.Black\",\"overtop\":\"NeckHigh_Savanna.Pink\",\"shoes\":\"Wellies.Orange\",\"headAccessory\":null,\"faceAccessory\":null,\"earAccessory\":null,\"skinFeature\":null,\"gloves\":null,\"cape\":null}";
 
-const MAX_SKINS = 5;
-
 const SERVER_PROTOCOL =  "http://"
 const SERVER_URI = "127.0.0.1:59313"
 
@@ -269,7 +267,7 @@ func initSkinData(skinData string) {
 	skinUuid := uuid.NewString();
 
 	sSkin.ActiveSkin = skinUuid;
-	sSkin.MaxSkins = MAX_SKINS;
+	sSkin.MaxSkins = int(wCommune.MaxSkins);
 
 	skinDef := skinDefinition{
 		ID: skinUuid,
@@ -308,6 +306,10 @@ func handleNewSkin(w http.ResponseWriter, req *http.Request) {
 		case "GET":
 			w.Header().Add("Content-Type", "application/json");
 			w.WriteHeader(200);
+
+			// set max skins :
+			sSkin.MaxSkins = int(wCommune.MaxSkins);
+
 			json.NewEncoder(w).Encode(sSkin);
 		case "POST":
 			def := skinDefinition{};

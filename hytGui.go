@@ -32,7 +32,10 @@ type launcherCommune struct {
 	GameFolder string `json:"install_directory"`
 	UserDataFolder string `json:"userdata_directory"`
 	JreFolder string `json:"jre_directory"`
+
+	// Debug Settings
 	UUID string `json:"uuid_override"`
+	MaxSkins int32 `json:"max_skins_override"`
 
 	FormatVersion int `json:"fmt_version"`
 }
@@ -67,6 +70,7 @@ var (
 		UserDataFolder: DefaultUserDataFolder(),
 		JreFolder: DefaultJreFolder(),
 		FormatVersion: 0,
+		MaxSkins: 5,
 		UUID: "",
 	};
 	wProgress float32 = 0.0
@@ -119,7 +123,7 @@ func cacheVersionList() {
 
 func getWindowWidth() float32 {
 	vec2 := imgui.ContentRegionAvail();
-	return vec2.X; //float32(w) - float32(padX*2);
+	return vec2.X;
 }
 
 
@@ -386,7 +390,7 @@ func versionMenu() giu.Widget {
 	if showVersion < 0{
 		showVersion = 0;
 	} else if showVersion > len(versions) {
-		showVersion = len(versions);
+		showVersion = len(versions)-1;
 	}
 
 	return giu.Layout{
@@ -413,6 +417,19 @@ func versionMenu() giu.Widget {
 	};
 }
 
+func labeledIntInput(label string, value *int32, disabled bool) giu.Widget {
+	if value == nil {
+		panic("failed to initalize browse button");
+	}
+
+	return giu.Style().SetDisabled(wDisabled || disabled).To(
+		giu.Label(label+": "),
+		giu.Row(
+			giu.InputInt(value).Size(getWindowWidth()),
+		),
+	);
+
+}
 
 func labeledTextInput(label string, value *string, disabled bool) giu.Widget {
 	if value == nil {
@@ -590,8 +607,9 @@ func drawSettings() giu.Widget{
 		giu.Tooltip("The location of the Java Runtime Environment that the game's server uses\n(it will be downloaded here, if it's not found)").To(browseButton("JRE Location", &wCommune.JreFolder, nil)),
 		giu.Tooltip("The location that the games savedata will be stored,\n(worlds, mods, server list, log files, etc)").To(browseButton("User Data Location", &wCommune.UserDataFolder, nil)),
 		giu.Tooltip("These are settings for advanced usecases that are not likely to be needed by most users.\nThe convention of prefixing them with a \"★\" is shamelessly stolen from PlayStation.").To(
-			giu.TreeNode("★Debug Settings").Layout(
+		giu.TreeNode("★Debug Settings").Layout(
 			giu.Tooltip("Allows you to run the game spoofing a specific Universal Unique Identifier (you probably dont need this)").To(labeledTextInput("★Override UUID", &wCommune.UUID, wCommune.Mode == E_MODE_AUTHENTICATED)),
+			giu.Tooltip("Allows you to override the maximum amount of skin presets (default: 5)").To(labeledIntInput("★Override Max Skins", &wCommune.MaxSkins, wCommune.Mode == E_MODE_AUTHENTICATED)),
 		)),
 	);
 }
