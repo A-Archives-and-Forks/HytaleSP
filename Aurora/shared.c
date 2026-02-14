@@ -264,7 +264,6 @@ BOOL WINAPI CreateProcessW_hook(
 		int keep = modifyArgument(program, n_env);
 		if (keep == 1) {
 
-			wait();
 			MultiByteToWideChar(CP_UTF8, 0, n_env, -1, &new_wenv[new_envc], len);
 			new_envc += wcslen(&new_wenv[new_envc]) + 1;
 

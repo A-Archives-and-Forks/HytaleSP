@@ -5,7 +5,6 @@
 #include "patch.h"
 #include "cs_string.h"
 #include <stdlib.h>
-
 static int num_swaps = 0;
 
 typedef struct swapEntry {
@@ -117,12 +116,14 @@ void swap(uint8_t* mem, csString* old, csString* new) {
 void changeServers() {
 
     swapEntry swaps[] = {
-        {.old = make_csstr(L"https://account-data."),                                       .new = make_csstr(L"http://127.0.0")},
-        {.old = make_csstr(L"https://sessions."),                                           .new = make_csstr(L"http://127.0.0")},
-        {.old = make_csstr(L"https://telemetry."),                                          .new = make_csstr(L"http://127.0.0")},
-        {.old = make_csstr(L"https://tools."),                                              .new = make_csstr(L"http://127.0.0")},
-        {.old = make_csstr(L"hytale.com"),                                                  .new = make_csstr(L".1:59313")},
-        //{.old = make_csstr(L"https://ca900df42fcf57d4dd8401a86ddd7da2@sentry.hytale.com/"), .new = make_csstr(L"http://127.0.0.1")},
+        {.old = make_csstr(L"https://account-data."),                                           .new = make_csstr(L"http://127.0.0")},
+        {.old = make_csstr(L"https://sessions."),                                               .new = make_csstr(L"http://127.0.0")},
+        {.old = make_csstr(L"https://tools."),                                                  .new = make_csstr(L"http://127.0.0")},
+        {.old = make_csstr(L"hytale.com"),                                                      .new = make_csstr(L".1:59313")},
+#ifdef DISABLE_TELEMETRY
+        {.old = make_csstr(L"https://telemetry."),                                              .new = make_csstr(L"http://127.0.0")},
+        {.old = make_csstr(L"https://ca900df42fcf57d4dd8401a86ddd7da2@sentry.hytale.com/2"),    .new = make_csstr(L"http://transrights@127.0.0.1:59313/2")},
+#endif
     };
 
 
