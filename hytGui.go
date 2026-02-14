@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
-	"math/rand/v2"
 	"os"
 	"path"
 	"path/filepath"
@@ -84,24 +83,6 @@ var (
 	wImGuiWindow *giu.WindowWidget = nil;
 )
 
-func getRandomUsername() string {
-
-	avalibleUsernames := []string {
-		"Trans Rights",
-		"Plural Rings",
-		"Free Palestine",
-		"Anarchy Now!",
-		"Hatsune Miku",
-		"Hypixel",
-		"Jeb_",
-		"Honeydew",
-		"SkyTheKidRS",
-		"Notch",
-	};
-
-	return avalibleUsernames[rand.IntN(len(avalibleUsernames))];
-
-}
 
 
 func cacheVersionList() {
@@ -135,7 +116,6 @@ func doAuthentication() {
 		wCommune.AuthTokens = nil;
 		wCommune.Mode = E_MODE_FAKEONLINE;
 		writeSettings();
-		//loop.Do(updateWindow);
 	}
 
 	wCommune.AuthTokens = &aTokens;
@@ -402,9 +382,8 @@ func versionMenu() giu.Widget {
 
 				go func() {
 					defer func() { wDisabled = false; }();
+					err := deleteVersion(selectedVersion, selectedChannel)
 
-					installDir := getVersionInstallPath(selectedVersion, selectedChannel);
-					err := os.RemoveAll(installDir);
 					if err != nil {
 						showErrorDialog(fmt.Sprintf("failed to remove: %s", err), "failed to remove");
 						return;

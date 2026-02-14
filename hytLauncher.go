@@ -331,7 +331,43 @@ func installGameEx(startVersion int, endVersion int, channel string, operatingSy
 	return nil;
 }
 
+func deleteVersion(version int, channel string) error{
+
+	installDir := getVersionInstallPath(version, channel);
+	err := os.RemoveAll(installDir);
+	if err != nil {
+		return err;
+	}
+
+	return nil;
+}
+
+func workaround(version int, channel string, onProgress func(done int64, total int64)) bool {
+	if version == 21 && channel == "pre-release" && !isGameVersionInstalled(20, "pre-release") {
+
+		err := installGame(20, "pre-release", onProgress);
+		if err != nil {
+			return false;
+		}
+		defer deleteVersion(20, channel);
+
+
+		err = installGame(21, "pre-release", onProgress);
+		if err != nil {
+			return false;
+		}
+		return true;
+	}
+
+	return false;
+}
+
 func installGame(version int, channel string, onProgress func(done int64, total int64)) error {
+	if(workaround(version, channel, onProgress)) {
+		return nil;
+	}
+
+
 	closest := findClosestVersion(version, channel);
 	src := getVersionInstallPath(closest, channel);
 	apply := getVersionInstallPath(version, channel);
@@ -344,6 +380,7 @@ func installGame(version int, channel string, onProgress func(done int64, total 
 		apply = getVersionInstallPath(version, channel);
 		temp = getVersionDownloadPath(closest, version, channel);
 	}
+
 
 	return installGameEx(closest, version, channel, runtime.GOOS, runtime.GOARCH, src, apply, temp, onProgress);
 }
