@@ -103,8 +103,9 @@ func doOauth() (code string, verifier string, err error) {
 
 			code := req.URL.Query().Get("code");
 
+
 			w.WriteHeader(200);
-			w.Write([]byte("Trans rights! (you are very cute, oh also authenticated ig?)"));
+			w.Write([]byte("Trans rights! (you are very cute, also please see back at HytaleSP for results.)"));
 
 			c <- code;
 
@@ -137,16 +138,13 @@ func verifyToken(verifier string, code string) (accessTokens, error) {
 	data.Add("redirect_uri", REDIRECT_URI);
 
 	// create new request
-	req, err := http.NewRequest("POST", TOKEN_URL, strings.NewReader(data.Encode()));
+	req, err := createRequest("POST", TOKEN_URL, data.Encode());
 	if err != nil {
 		return accessTokens{}, err;
 	}
 
 	req.Header.Add("Authorization", authStr);
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded");
-	req.Header.Set("User-Agent", "hytale-launcher/2026.02.12-54e579b");
-	req.Header.Set("x-hytale-launcher-version", "2026.02.12-54e579b");
-	req.Header.Set("x-hytale-launcher-branch", "release");
 
 	// send response
 	resp, err := http.DefaultClient.Do(req);
@@ -167,15 +165,25 @@ func verifyToken(verifier string, code string) (accessTokens, error) {
 func refreshToken(refreshToken string) (aToken accessTokens, err error){
 
 	data := url.Values{}
-	data.Set("client_id", "hytale-launcher")
+
+	// TODO: it seems that sometimes the client id is passed via auth header,
+	// other times its passed by the 'authentication' header;
+	// im not sure which to use or if theres any rhyme or reason behind when to use either;
+
+	//data.Set("client_id", "hytale-launcher")
+
 	data.Set("grant_type", "refresh_token")
 	data.Set("refresh_token", refreshToken)
 
-	req, _ := http.NewRequest("POST", TOKEN_URL, strings.NewReader(data.Encode()));
+	req, _ := createRequest("POST", TOKEN_URL, data.Encode());
+
+	if rand.IntN(10) > 5 {
+
+	}
+	authStr := "Basic " + base64.URLEncoding.EncodeToString([]byte("hytale-launcher:"));
+	req.Header.Add("Authorization", authStr);
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded");
 	req.Header.Set("User-Agent", "hytale-launcher/2026.02.12-54e579b");
-	req.Header.Set("x-hytale-launcher-version", "2026.02.12-54e579b");
-	req.Header.Set("x-hytale-launcher-branch", "release");
 
 	resp, err := http.DefaultClient.Do(req);
 	if err != nil {

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -36,13 +35,7 @@ func getNewSession(atokens accessTokens, uuid string) (sessionNew, error) {
 		UUID: uuid,
 	};
 
-	j, err := json.Marshal(&nSess);
-
-	if err != nil {
-		return sessionNew{}, err;
-	}
-
-	req, err:= http.NewRequest("POST", fullUrl, bytes.NewReader(j));
+	req, err:= createRequest("POST", fullUrl, &nSess);
 
 	if err != nil {
 		return sessionNew{}, err;
@@ -119,7 +112,7 @@ func getLauncherData(atokens accessTokens, architecture string, operatingSystem 
 
 	launcherDataUrl.RawQuery = query.Encode();
 
-	req, _:= http.NewRequest("GET", launcherDataUrl.String(), nil);
+	req, _:= createRequest("GET", launcherDataUrl.String(), nil);
 
 	req.Header.Add("Authorization", "Bearer " + atokens.AccessToken);
 	req.Header.Add("Content-Type", "application/json");
@@ -144,7 +137,7 @@ func getLauncherData(atokens accessTokens, architecture string, operatingSystem 
 func getVersionManifest(atokens accessTokens, architecture string, operatingSystem string, channel string, gameVersion int) (versionManifest, error) {
 	fullUrl, _ := url.JoinPath(ACCOUNT_DATA_URL, "patches", operatingSystem, architecture, channel, strconv.Itoa(gameVersion));
 
-	req, _:= http.NewRequest("GET", fullUrl, nil);
+	req, _:= createRequest("GET", fullUrl, nil);
 
 	req.Header.Add("Authorization", "Bearer " + atokens.AccessToken);
 	req.Header.Add("Content-Type", "application/json");

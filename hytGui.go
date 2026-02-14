@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"time"
 
 	"github.com/AllenDang/cimgui-go/imgui"
 	"github.com/AllenDang/giu"
@@ -209,16 +210,30 @@ func authenticatedCheckForUpdatesAndGetProfileList() {
 
 func reAuthenticate() {
 	if wCommune.AuthTokens != nil && wCommune.Mode == E_MODE_AUTHENTICATED {
-		aTokens, err:= getAuthTokens(*wCommune.AuthTokens);
-
+		_, session, err := unmakeJwt(wCommune.AuthTokens.AccessToken);
 		if err != nil {
-			showErrorDialog(fmt.Sprintf("Failed to authenticate: %s", err), "Auth failed.");
+			showErrorDialog(fmt.Sprintf("Failed to parse JWT %s", err), "Auth failed.");
 			wCommune.AuthTokens = nil;
 			wCommune.Mode = E_MODE_FAKEONLINE;
 			writeSettings();
+			return;
 		}
 
-		wCommune.AuthTokens = &aTokens;
+		if time.Now().Unix() > int64(session.Exp) {
+			aTokens, err:= getAuthTokens(*wCommune.AuthTokens);
+
+
+			if err != nil {
+				showErrorDialog(fmt.Sprintf("Failed to authenticate: %s", err), "Auth failed.");
+				wCommune.AuthTokens = nil;
+				wCommune.Mode = E_MODE_FAKEONLINE;
+				writeSettings();
+				return;
+			}
+
+			wCommune.AuthTokens = &aTokens;
+		}
+
 		authenticatedCheckForUpdatesAndGetProfileList();
 	}
 }
@@ -463,7 +478,11 @@ func modeSelector () giu.Widget {
 
 	return giu.Layout{
 		giu.Label("Launch Mode: "),
-		giu.Combo("##launchMode", modes[wCommune.Mode], modes, &wCommune.Mode).Size(getWindowWidth()),
+		giu.Combo("##launchMode", modes[wCommune.Mode], modes, &wCommune.Mode).Size(getWindowWidth()).OnChange(func() {
+			if wCommune.Mode == E_MODE_AUTHENTICATED {
+				go reAuthenticate();
+			}
+		}),
 	};
 }
 

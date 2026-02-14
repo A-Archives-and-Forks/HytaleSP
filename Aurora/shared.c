@@ -1,5 +1,6 @@
 #include "cs_string.h"
 #include "patch.h"
+#include "shared.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -16,6 +17,7 @@
 #define WIN32_MEAN_AND_LEAN 1
 #include <windows.h>
 #include <psapi.h>
+extern int WINAPI K32GetModuleInformation(HANDLE process, HMODULE module, LPMODULEINFO modinfo, DWORD sz);
 #endif
 
 
@@ -243,15 +245,15 @@ BOOL WINAPI CreateProcessW_hook(
 	size_t wenvc = 0;
 
 	// count total size of environment block ...
-	for (wenvc = 0; wcscmp(&wenv[wenvc], "") != 0; wenvc += wcslen(&wenv[wenvc]) + 1);
+	for (wenvc = 0; wcscmp(&wenv[wenvc], L"") != 0; wenvc += wcslen(&wenv[wenvc]) + 1);
 	
-	sz = (wenvc * sizeof(wchar_t)) + sizeof(wchar_t);
+	sz = (int)((wenvc * sizeof(wchar_t)) + sizeof(wchar_t));
 	wchar_t* new_wenv = malloc(sz);
 	assert(new_wenv != NULL);
 	memset(new_wenv, 0x00, sz);
 	size_t new_envc = 0;
 
-	for (int i = 0; wcscmp(&wenv[i], "") != 0; i += wcslen(&wenv[i]) + 1) {
+	for (size_t i = 0; wcscmp(&wenv[i], L"") != 0; i += wcslen(&wenv[i]) + 1) {
 		len = WideCharToMultiByte(CP_UTF8, 0, &wenv[i], -1, NULL, 0, NULL, NULL);
 		sz = (len * sizeof(char)) + 1;
 

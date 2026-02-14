@@ -2,9 +2,7 @@ package main
 
 import (
 	"archive/zip"
-	"crypto/ed25519"
 	"crypto/md5"
-	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -39,7 +37,6 @@ var (
 	sSkinLoaded = false;
 )
 
-var sPublic, sPrivate, _ = ed25519.GenerateKey(rand.Reader);
 
 func getOldSkinJsonPath() string {
 	return filepath.Join(ServerDataFolder(), "skin.json");
@@ -445,38 +442,10 @@ func handleFeedbacksReport(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(204);
 }
 
-/*
-func handleManifest(w http.ResponseWriter, req *http.Request) {
-
-	target := req.PathValue("target")
-	arch := req.PathValue("arch")
-	branch := req.PathValue("branch")
-	patch := req.PathValue("patch")
-	fmt.Printf("target: %s\narch: %s\nbranch: %s\npatch: %s\n", target, arch, branch, patch);
-
-	p := filepath.Join("patches", target, arch, branch, patch, "manifest.json");
-
-	http.ServeFile(w, req, p);
-
-}
-
-func handlePatches(w http.ResponseWriter, req *http.Request) {
-
-	fp := req.PathValue("filepath");
-	p := filepath.Join("patches", fp);
-
-	_, err := os.Stat(p);
-	if err != nil {
-		return;
-	}
-
-	http.ServeFile(w, req, p);
-}
-*/
 
 func handleJwksRequest(w http.ResponseWriter, req *http.Request) {
-	fmt.Printf("[JWT] private key: %s\n", hex.EncodeToString(sPrivate));
-	fmt.Printf("[JWT] public key: %s\n", hex.EncodeToString(sPublic));
+	fmt.Printf("[JWT] private key: %s\n", hex.EncodeToString(jwtPrivate));
+	fmt.Printf("[JWT] public key: %s\n", hex.EncodeToString(jwtPublic));
 
 	keys := jwkKeyList{
 		Keys: []jwkKey {
@@ -486,7 +455,7 @@ func handleJwksRequest(w http.ResponseWriter, req *http.Request) {
 				Kid: "2025-10-01",
 				Kty: "OKP",
 				Use: "sig",
-				X: base64.RawURLEncoding.EncodeToString([]byte(sPublic)),
+				X: base64.RawURLEncoding.EncodeToString([]byte(jwtPublic)),
 			},
 		},
 	};
@@ -562,27 +531,7 @@ func runServer() {
 	}
 }
 
-func sign(j string) string {
 
-	sig := ed25519.Sign(sPrivate, []byte(j));
-	return base64.RawURLEncoding.EncodeToString(sig);
-}
-
-func makeJwt(body any) string {
-	head := jwtHeader{
-		Alg: "EdDSA",
-		Kid: "2025-10-01",
-		Typ: "JWT",
-	};
-
-	jHead, _ := json.Marshal(head);
-	jBody, _ := json.Marshal(body);
-
-
-	jwt := base64.RawURLEncoding.EncodeToString(jHead) + "." + base64.RawURLEncoding.EncodeToString(jBody)
-	jwt += "." + sign(jwt);
-	return jwt;
-}
 
 func reloadSkin() {
 	sSkinLoaded = false;
@@ -614,8 +563,6 @@ func generateSessionJwt(scope []string) string {
 
 	return makeJwt(sesTok);
 }
-
-
 
 func generateIdentityJwt(scope []string) string {
 
