@@ -38,21 +38,21 @@ endif
 
 # TODO: Move flatpak build outside of shell scripts.
 ifeq ($(TARGET),Linux)
-@PHONY: flatpak
+.PHONY: flatpak
 flatpak: $(BINARY)$(EXE)
 	flatpak install org.freedesktop.Sdk//25.08 org.flatpak.Builder --system -y
 	cd flatpak && ./buildpak.sh
 	mv flatpak/$(BINARY).flatpak ./$(BINARY).flatpak
 endif
 
-@PHONY: setup
+.PHONY: setup
 setup:
 ifeq ($(TARGET),Windows)
 	-win7go
 endif
 	go mod tidy
 
-@PHONY: clean
+.PHONY: clean
 clean:
 	-$(DELCMD) $(BINARY)$(EXE)
 	-$(DELCMD) $(OBJ)
