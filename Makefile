@@ -35,7 +35,6 @@ endif
 ifeq ($(TARGET),Windows)
 COMMA := ,
 NORM_VER := $(subst $(subst ,, ),.,$(foreach IDX,1 2 3 4,$(if $(word $(IDX),$(subst ., ,$(subst v,,$(TAG)))),$(word $(IDX),$(subst ., ,$(subst v,,$(TAG)))),0)))
-
 Resources/version.h:
 	echo #define VER $(subst .,$(COMMA),$(NORM_VER)) >$@
 	echo #define VERSTR "$(NORM_VER)" >>$@
