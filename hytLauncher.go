@@ -495,6 +495,19 @@ func launchGame(version int, channel string, username string, uuid string) error
 			generateSessionJwt([]string{"hytale:client"}));
 
 
+		// basic config
+		os.Setenv("AURORA_ENABLE_CONSOLE", "false");
+		os.Setenv("AURORA_ENABLE_INSECURE_SERVERS", "true");
+		os.Setenv("AURORA_ENABLE_AUTH_SWAP", "true");
+		os.Setenv("AURORA_ENABLE_SINGLEPLAYER_AS_INSECURE", "true");
+
+		// localhost auth
+		os.Setenv("AURORA_SESSIONS", "http://127.0.0");
+		os.Setenv("AURORA_ACCOUNT_DATA", "http://127.0.0");
+		os.Setenv("AURORA_TOOLS", "http://127.0.0");
+		os.Setenv("AURORA_TELEMETRY", "http://127.0.0");
+		os.Setenv("AURORA_HYTALE_COM", ".1:59313");
+
 		switch(runtime.GOOS) {
 			case "linux":
 				os.Setenv("LD_PRELOAD", dllName);
