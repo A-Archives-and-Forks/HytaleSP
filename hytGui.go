@@ -169,6 +169,11 @@ func checkForLauncherUpdates() {
 	}
 
 
+	// dont check for updates when using `go run .`
+	if wVersion == "no-version" {
+		return;
+	}
+
 	if wCommune.AutoUpdates {
 		UpdateChecker.Init(UpdateChecker.Repository{
 			Domain: "git.silica.codes",
@@ -186,10 +191,10 @@ func checkForLauncherUpdates() {
 			err := zenity.Question(fmt.Sprintf("A new version of HytaleSP was found!\nVersion: %s\n%s", updateInfo.NewVersion, updateInfo.Description),
 					       zenity.Title("HytaleSP Update"), zenity.QuestionIcon, zenity.OKLabel("Install"), zenity.CancelLabel("Not Now"), zenity.ExtraButton("Never"));
 			if err != nil {
-				if err != zenity.ErrCanceled {
+				if err == zenity.ErrCanceled {
 					return;
 				}
-				if(err != zenity.ErrExtraButton) {
+				if(err == zenity.ErrExtraButton) {
 					wCommune.AutoUpdates = false;
 				}
 			}
@@ -716,9 +721,9 @@ func drawWidgets() {
 			giu.TabItem("Settings").Layout(
 				drawSettings(),
 			),
-			/*giu.TabItem("Mods").Layout(
+			giu.TabItem("Mods").Layout(
 				giu.Custom(func(){}),
-			),*/
+			),
 		),
 	)
 }

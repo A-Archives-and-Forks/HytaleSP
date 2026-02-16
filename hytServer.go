@@ -527,7 +527,9 @@ func runServer() {
 
 	err := http.ListenAndServe(SERVER_URI, handler);
 	if err != nil {
-		fmt.Printf("error starting server: %s is the server already running?", err);
+		fmt.Printf("error starting server: %s is the server already running?\n", err);
+	} else {
+		fmt.Printf("Starting server on $s\n", SERVER_URI);
 	}
 }
 
