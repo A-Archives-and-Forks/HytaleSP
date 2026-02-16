@@ -1,0 +1,3 @@
+[submodule "Aurora"]
+	path = Aurora
+	url = https://git.silica.codes/Li/Aurora.git
