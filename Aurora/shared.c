@@ -20,6 +20,8 @@
 extern int WINAPI K32GetModuleInformation(HANDLE process, HMODULE module, LPMODULEINFO modinfo, DWORD sz);
 #endif
 
+#define wait() { printf(":: %d\n", __LINE__); fgets(a, sizeof(a)-1, stdin); }
+
 
 int change_prot(uintptr_t addr, int newProt) {
 #ifdef __linux__ 
@@ -149,9 +151,15 @@ BOOL WINAPI CreateProcessW_hook(
 	LPSTARTUPINFOW lpStartupInfo,
 	LPPROCESS_INFORMATION lpProcessInformation
 ) {
+	
 	// 
 	// remove session token from command line arguments.
 	//
+	
+	if (lpCommandLine == NULL) {
+		return CreateProcessW_original(lpApplicationName, lpCommandLine, lpProcessAttributes, lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
+	}
+
 	int wargc = 0;
 
 	wchar_t** wargv = CommandLineToArgvW(lpCommandLine, &wargc);
@@ -241,45 +249,46 @@ BOOL WINAPI CreateProcessW_hook(
 	// remove session token from environement block
 	//
 	
-	wchar_t* wenv = lpEnvironment;
-	size_t wenvc = 0;
+	if (lpEnvironment != NULL) {
+		wchar_t* wenv = lpEnvironment;
+		size_t wenvc = 0;
 
-	// count total size of environment block ...
-	for (wenvc = 0; wcscmp(&wenv[wenvc], L"") != 0; wenvc += wcslen(&wenv[wenvc]) + 1);
-	
-	sz = (int)((wenvc * sizeof(wchar_t)) + sizeof(wchar_t));
-	wchar_t* new_wenv = malloc(sz);
-	assert(new_wenv != NULL);
-	memset(new_wenv, 0x00, sz);
-	size_t new_envc = 0;
+		// count total size of environment block ...
+		for (wenvc = 0; wcscmp(&wenv[wenvc], L"") != 0; wenvc += wcslen(&wenv[wenvc]) + 1);
 
-	for (size_t i = 0; wcscmp(&wenv[i], L"") != 0; i += wcslen(&wenv[i]) + 1) {
-		len = WideCharToMultiByte(CP_UTF8, 0, &wenv[i], -1, NULL, 0, NULL, NULL);
-		sz = (len * sizeof(char)) + 1;
+		sz = (int)((wenvc * sizeof(wchar_t)) + sizeof(wchar_t));
+		wchar_t* new_wenv = malloc(sz);
+		assert(new_wenv != NULL);
+		memset(new_wenv, 0x00, sz);
+		size_t new_envc = 0;
 
-		char* n_env = malloc(sz);
-		assert(n_env != NULL);
-		memset(n_env, 0x00, sz);
+		for (size_t i = 0; wcscmp(&wenv[i], L"") != 0; i += wcslen(&wenv[i]) + 1) {
+			len = WideCharToMultiByte(CP_UTF8, 0, &wenv[i], -1, NULL, 0, NULL, NULL);
+			sz = (len * sizeof(char)) + 1;
 
-		WideCharToMultiByte(CP_UTF8, 0, &wenv[i], -1, n_env, len, NULL, NULL);
-		
-		int keep = modifyArgument(program, n_env);
-		if (keep == 1) {
+			char* n_env = malloc(sz);
+			assert(n_env != NULL);
+			memset(n_env, 0x00, sz);
 
-			MultiByteToWideChar(CP_UTF8, 0, n_env, -1, &new_wenv[new_envc], len);
-			new_envc += wcslen(&new_wenv[new_envc]) + 1;
+			WideCharToMultiByte(CP_UTF8, 0, &wenv[i], -1, n_env, len, NULL, NULL);
+			int keep = modifyArgument(program, n_env);
 
+			if (keep == 1) {
+
+				MultiByteToWideChar(CP_UTF8, 0, n_env, -1, &new_wenv[new_envc], len);
+				new_envc += wcslen(&new_wenv[new_envc]) + 1;
+			}
+			free(n_env);
 		}
-		free(n_env);
+		new_envc++;
+
+		memcpy(wenv, new_wenv, new_envc * sizeof(wchar_t));
+		free(new_wenv);
+		free(program);
 	}
-	new_envc++;
 
-	memcpy(wenv, new_wenv, new_envc * sizeof(wchar_t));
-	free(new_wenv);
-	free(program);
 
-	int ret = CreateProcessW_original(lpApplicationName, lpCommandLine, lpProcessAttributes, lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
-
+	return CreateProcessW_original(lpApplicationName, lpCommandLine, lpProcessAttributes, lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
 }
 #endif
 
