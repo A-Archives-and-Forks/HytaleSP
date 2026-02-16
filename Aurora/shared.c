@@ -23,6 +23,31 @@ extern int WINAPI K32GetModuleInformation(HANDLE process, HMODULE module, LPMODU
 #define wait() { printf(":: %d\n", __LINE__); fgets(a, sizeof(a)-1, stdin); }
 
 
+
+char* get_string(const char* setting) {
+	const char* header = "AURORA_";
+
+	size_t sz = ((strlen(header) + strlen(setting)) + sizeof(char));
+	char* newSetting = malloc(sz);
+	memset(newSetting, 0x00, sz);
+	
+	snprintf(newSetting, sz - sizeof(char), "%s%s", header, setting);
+
+	char* env = getenv(newSetting);
+	free(newSetting);
+
+	if (env == NULL) return "";
+	return env;
+}
+
+int get_bool(const char* setting) {
+	char* env = get_string(setting);
+
+	if (strcmp(env, "true")) return 1;
+	return 0;
+}
+
+
 int change_prot(uintptr_t addr, int newProt) {
 #ifdef __linux__ 
 	uintptr_t align = (addr - (addr % getpagesize()));
