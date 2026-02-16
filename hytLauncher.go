@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -505,18 +506,40 @@ func launchGame(version int, channel string, username string, uuid string) error
 
 		fmt.Printf("Running: %s\n", strings.Join(e.Args, " "))
 
-		e.Env = []string {
-			"AURORA_ENABLE_INSECURE_SERVERS=true",
-			"AURORA_ENABLE_AUTH_SWAP=true",
-			"AURORA_ENABLE_SINGLEPLAYER_AS_INSECURE=true",
-			"AURORA_SESSIONS=http://127.0.0",
-			"AURORA_ACCOUNT_DATA=http://127.0.0",
-			"AURORA_TOOLS=http://127.0.0",
-			"AURORA_TELEMETRY=http://127.0.0",
-			"AURORA_HYTALE_COM=.1:59313",
-		}
+		e.Env = e.Environ();
+
+		e.Env = append(e.Env, "AURORA_ENABLE_INSECURE_SERVERS=true");
+		e.Env = append(e.Env, "AURORA_ENABLE_AUTH_SWAP=true");
+		e.Env = append(e.Env, "AURORA_ENABLE_SINGLEPLAYER_AS_INSECURE=true");
+		e.Env = append(e.Env, "AURORA_SESSIONS=http://127.0.0");
+		e.Env = append(e.Env, "AURORA_ACCOUNT_DATA=http://127.0.0");
+		e.Env = append(e.Env, "AURORA_TOOLS=http://127.0.0");
+		e.Env = append(e.Env, "AURORA_TELEMETRY=http://127.0.0");
+		e.Env = append(e.Env, "AURORA_HYTALE_COM=.1:59313");
+
+		stdout, stdouterr := e.StdoutPipe();
+		stderr, stderrerr := e.StderrPipe();
 
 		err = e.Start();
+
+		if stdouterr == nil {
+			stdout_scan := bufio.NewScanner(stdout)
+			stdout_scan.Split(bufio.ScanWords)
+			for stdout_scan.Scan() {
+				m := stdout_scan.Text()
+				fmt.Println(m)
+			}
+		}
+
+		if stderrerr == nil {
+			stderr_scan := bufio.NewScanner(stderr)
+			stderr_scan.Split(bufio.ScanWords)
+			for stderr_scan.Scan() {
+				m := stderr_scan.Text()
+				fmt.Errorf(m)
+			}
+		}
+
 
 		if err != nil {
 			return err;
