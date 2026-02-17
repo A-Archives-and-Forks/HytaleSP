@@ -559,6 +559,7 @@ func launchGame(version int, channel string, username string, uuid string) error
 		e.Env = append(e.Env, "AURORA_TOOLS=http://127.0.0");
 		e.Env = append(e.Env, "AURORA_TELEMETRY=http://127.0.0");
 		e.Env = append(e.Env, "AURORA_HYTALE_COM=.1:59313");
+		e.Env = append(e.Env, "AURORA_SENTRY_URL=http://transrights@127.0.0.1/2");
 
 		err = run(e);
 
