@@ -36,12 +36,13 @@ type launcherCommune struct {
 	JreFolder string `json:"jre_directory"`
 
 	AutoUpdates bool `json:"automatic_updates"`
+	FormatVersion int `json:"fmt_version"`
 
 	// Debug Settings
 	UUID string `json:"uuid_override"`
 	MaxSkins int32 `json:"max_skins_override"`
-
-	FormatVersion int `json:"fmt_version"`
+	Console bool `json:"show_console"`
+	AuroraEverywhere bool `json:"aurora_everywhere"`
 }
 
 
@@ -75,8 +76,11 @@ var (
 		UserDataFolder: DefaultUserDataFolder(),
 		JreFolder: DefaultJreFolder(),
 		FormatVersion: 0,
+
 		MaxSkins: 5,
 		UUID: "",
+		Console: false,
+		AuroraEverywhere: true,
 	};
 	wProgress float32 = 0.0
 	wDisabled = false
@@ -662,6 +666,9 @@ func drawStartGame() giu.Widget{
 				go func() {
 					wDisabled = true;
 					defer func() {wDisabled = false;}();
+					if giu.IsKeyDown(giu.KeyLeftShift) {
+						zenity.SelectFile()
+					}
 
 					err := downloadAndRunGameEx(int(wCommune.SelectedVersion)+1, valToChannel(int(wCommune.Patchline)),
 							func() {},
@@ -685,11 +692,17 @@ func drawSettings() giu.Widget{
 		giu.Tooltip("The location that the game files are stored\n(they will be downloaded here, if it's not found)").To(browseButton("Game Location", &wCommune.GameFolder, cacheVersionList)),
 		giu.Tooltip("The location of the Java Runtime Environment that the game's server uses\n(it will be downloaded here, if it's not found)").To(browseButton("JRE Location", &wCommune.JreFolder, nil)),
 		giu.Tooltip("The location that the games savedata will be stored,\n(worlds, mods, server list, log files, etc)").To(browseButton("User Data Location", &wCommune.UserDataFolder, nil)),
-		giu.Tooltip("These are settings for advanced usecases that are not likely to be needed by most users.\nThe convention of prefixing them with a \"★\" is shamelessly stolen from PlayStation.").To(
+		drawSeperator("Launcher"),
+		giu.Tooltip("Toggles wether or not to automatically check for updates to the launcher.\n").To(giu.Checkbox("Check For Updates", &wCommune.AutoUpdates)),
+
 		giu.TreeNode("★Debug Settings").Layout(
-			giu.Tooltip("Allows you to run the game spoofing a specific Universal Unique Identifier (you probably dont need this)").To(labeledTextInput("★Override UUID", &wCommune.UUID, wCommune.Mode == E_MODE_AUTHENTICATED)),
+			giu.Tooltip("Allows you to run the game spoofing a specific Universal Unique Identifier").To(labeledTextInput("★Override UUID", &wCommune.UUID, wCommune.Mode == E_MODE_AUTHENTICATED)),
 			giu.Tooltip("Allows you to override the maximum amount of skin presets (default: 5)").To(labeledIntInput("★Override Max Skins", &wCommune.MaxSkins, wCommune.Mode == E_MODE_AUTHENTICATED)),
-		)),
+			giu.TreeNode("★Aurora Settings").Layout(
+				giu.Tooltip("Display stdout/stderr output for HytaleClient.").To(giu.Style().SetDisabled(wDisabled).To(giu.Checkbox("★Enable Console", &wCommune.Console))),
+				giu.Tooltip("This will allow you to join offline/insecure server and disable telemetry; even while using offical authentication").To(giu.Style().SetDisabled(wDisabled).To(giu.Checkbox("★Enable Aurora in Authenticated Mode", &wCommune.AuroraEverywhere))),
+			),
+		),
 	);
 }
 

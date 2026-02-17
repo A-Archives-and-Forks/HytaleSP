@@ -32,7 +32,7 @@ func run(e *exec.Cmd) error {
 		return err;
 	}
 
-	if wVersion == "no-version" {
+	if wVersion == "no-version" || (wCommune.Console && runtime.GOOS != "windows") {
 		go func() {
 			if oerr == nil {
 				stdout_scan := bufio.NewScanner(stdout)
@@ -58,7 +58,7 @@ func run(e *exec.Cmd) error {
 
 	proc, err := e.Process.Wait();
 	if proc.ExitCode() != 0 {
-		return fmt.Errorf("Process exited with non-0 exit code: %d", proc.ExitCode());
+		return fmt.Errorf("Process exited with non-0 exit code: %x", proc.ExitCode());
 	}
 
 	return nil;
@@ -468,6 +468,48 @@ func findClientBinary(version int, channel string) string {
 	}
 }
 
+func writeAurora(dllName string, embedName string) error {
+
+	// write aurora dll
+	data, err := embeddedFiles.ReadFile(embedName);
+	if err != nil {
+		return fmt.Errorf("failed to read embedded Aurora dll: %m -- Maybe try offline mode?", err);
+	}
+
+	fmt.Printf("[Aurora] Writing aurora dll: %s\n", dllName);
+	os.WriteFile(dllName, data, 0777);
+
+	// ld preload aurora dll
+	switch(runtime.GOOS) {
+		case "linux":
+			fmt.Printf("[Aurora] LD_PRELOAD=%s\n", dllName);
+			os.Setenv("LD_PRELOAD", dllName);
+		case "darwin":
+			fmt.Printf("[Aurora] DYLD_INSERT_LIBRARIES=%s\n", dllName);
+			os.Setenv("DYLD_INSERT_LIBRARIES ", dllName);
+	}
+
+	return nil;
+}
+
+func findAurora(clientPath string) (dllName string, embedName string) {
+
+	// get aurora dll location ..
+	if runtime.GOOS == "windows" {
+		dllName = filepath.Join(clientPath, "Secur32.dll");
+		embedName = path.Join("Aurora", "Build", "Aurora.dll");
+	}
+
+	if runtime.GOOS == "linux" {
+		dllName = filepath.Join(os.TempDir(), "Aurora.so");
+		embedName = path.Join("Aurora", "Build", "Aurora.so");
+	}
+
+	fmt.Printf("[Aurora] dll name: %s\n", dllName);
+	fmt.Printf("[Aurora] embed name: %s\n", embedName);
+
+	return dllName, embedName;
+}
 
 func launchGame(version int, channel string, username string, uuid string) error{
 
@@ -481,44 +523,23 @@ func launchGame(version int, channel string, username string, uuid string) error
 	os.MkdirAll(userDir, 0775);
 
 
-
 	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
 		os.Chmod(javaBin, 0775);
 		os.Chmod(clientBinary, 0775);
 	}
 
-	// remove fakeonline patch if present.
-	if runtime.GOOS == "windows" {
-		dllName := filepath.Join(filepath.Dir(clientBinary), "Secur32.dll");
-		os.Remove(dllName);
-	}
+	dllName, embedName := findAurora(filepath.Dir(clientBinary));
+
+	// clear out aurora incase its there,
+	os.Remove(dllName);
+
+	// remove auora dll once were done ..
+	defer os.Remove(dllName);
 
 	if wCommune.Mode == E_MODE_FAKEONLINE { // start with fake online mode
 
 		// setup fake online patch
 		go runServer();
-
-		var dllName string;
-		var embedName string;
-
-		if runtime.GOOS == "windows" {
-			dllName = filepath.Join(filepath.Dir(clientBinary), "Secur32.dll");
-			embedName = path.Join("Aurora", "Build", "Aurora.dll");
-		}
-
-		if runtime.GOOS == "linux" {
-			dllName = filepath.Join(os.TempDir(), "Aurora.so");
-			embedName = path.Join("Aurora", "Build", "Aurora.so");
-		}
-
-		// write fakeonline dll
-		data, err := embeddedFiles.ReadFile(embedName);
-		if err != nil {
-			return errors.New("read embedded Aurora dll -- Try offline mode.");
-		}
-		os.WriteFile(dllName, data, 0777);
-		defer os.Remove(dllName);
-
 		// start the client
 
 		e := exec.Command(clientBinary,
@@ -540,39 +561,30 @@ func launchGame(version int, channel string, username string, uuid string) error
 			generateSessionJwt([]string{"hytale:client"}));
 
 
-
-		switch(runtime.GOOS) {
-			case "linux":
-				os.Setenv("LD_PRELOAD", dllName);
-			case "darwin":
-				os.Setenv("DYLD_INSERT_LIBRARIES ", dllName);
-		}
-
 		fmt.Printf("Running: %s\n", strings.Join(e.Args, " "))
 
+		writeAurora(dllName, embedName);
+
+		// configure aurora for fakeonline
 		e.Env = e.Environ();
+		if wCommune.Console {
+			e.Env = append(e.Env, "AURORA_ENABLE_CONSOLE=true");
+		}
+
 		e.Env = append(e.Env, "AURORA_ENABLE_INSECURE_SERVERS=true");
 		e.Env = append(e.Env, "AURORA_ENABLE_AUTH_SWAP=true");
 		e.Env = append(e.Env, "AURORA_ENABLE_SINGLEPLAYER_AS_INSECURE=true");
-		e.Env = append(e.Env, "AURORA_SESSIONS=http://127.0.0");
-		e.Env = append(e.Env, "AURORA_ACCOUNT_DATA=http://127.0.0");
-		e.Env = append(e.Env, "AURORA_TOOLS=http://127.0.0");
-		e.Env = append(e.Env, "AURORA_TELEMETRY=http://127.0.0");
-		e.Env = append(e.Env, "AURORA_HYTALE_COM=.1:59313");
-		e.Env = append(e.Env, "AURORA_SENTRY_URL=http://transrights@127.0.0.1/2");
+		e.Env = append(e.Env, "AURORA_SESSIONS=http://"+SERVER_URI[:7]);
+		e.Env = append(e.Env, "AURORA_ACCOUNT_DATA=http://"+SERVER_URI[:7]);
+		e.Env = append(e.Env, "AURORA_TOOLS=http://"+SERVER_URI[:7]);
+		e.Env = append(e.Env, "AURORA_TELEMETRY=http://"+SERVER_URI[:7]);
+		e.Env = append(e.Env, "AURORA_HYTALE_COM="+SERVER_URI[7:]);
+		e.Env = append(e.Env, "AURORA_SENTRY_URL=http://transrights@"+SERVER_URI+"/2");
 
-		err = run(e);
+		err := run(e);
 
 		if err != nil {
 			return err;
-		}
-
-		// clear ld preload
-		switch(runtime.GOOS) {
-			case "linux":
-				os.Unsetenv("LD_PRELOAD");
-			case "darwin":
-				os.Unsetenv("DYLD_INSERT_LIBRARIES ");
 		}
 
 	} else if wCommune.Mode == E_MODE_AUTHENTICATED { // start authenticated
@@ -592,6 +604,8 @@ func launchGame(version int, channel string, username string, uuid string) error
 		if(err != nil) {
 			return err;
 		}
+
+		// write aurora dll
 
 		e := exec.Command(clientBinary,
 			"--app-dir",
@@ -613,6 +627,23 @@ func launchGame(version int, channel string, username string, uuid string) error
 
 		fmt.Printf("Running: %s\n", strings.Join(e.Args, " "))
 
+		if wCommune.AuroraEverywhere {
+			err := writeAurora(dllName, embedName);
+			if err == nil {
+				e.Env = e.Environ();
+				if wCommune.Console {
+					e.Env = append(e.Env, "AURORA_ENABLE_CONSOLE=true");
+				}
+
+				e.Env = append(e.Env, "AURORA_ENABLE_INSECURE_SERVERS=true");
+				e.Env = append(e.Env, "AURORA_ENABLE_AUTH_SWAP=true");
+				e.Env = append(e.Env, "AURORA_ENABLE_SINGLEPLAYER_AS_INSECURE=false");
+
+				// disable sentry & telemetry
+				e.Env = append(e.Env, "AURORA_TELEMETRY=http://127.0.0.1/");
+				e.Env = append(e.Env, "AURORA_SENTRY_URL=http://a@127.0.0.1/2");
+			}
+		}
 
 		err = run(e);
 
@@ -644,5 +675,14 @@ func launchGame(version int, channel string, username string, uuid string) error
 			return err;
 		}
 	}
+
+	// clear ld-preload
+	switch(runtime.GOOS) {
+		case "linux":
+			os.Unsetenv("LD_PRELOAD");
+		case "darwin":
+			os.Unsetenv("DYLD_INSERT_LIBRARIES ");
+	}
+
 	return nil;
 }
