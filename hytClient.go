@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"time"
 )
 
 const ACCOUNT_DATA_URL = "https://account-data.hytale.com/";
@@ -82,7 +81,15 @@ func getJres(channel string) (versionFeed, error) {
 	return feed, nil;
 }
 
-func getLaunchers(channel string) (versionFeed, error) {
+func getLatestLauncherVersion() string {
+	latestLauncher, err := getLauncherInfo("release");
+	if err != nil {
+		return "2026.02.12-54e579b";
+	}
+	return latestLauncher.Version;
+}
+
+func getLauncherInfo(channel string) (versionFeed, error) {
 	fullUrl, _ := url.JoinPath(LAUNCHER_URL, "version", channel, "launcher.json");
 
 	resp, err := http.Get(fullUrl);
@@ -101,7 +108,7 @@ func getLaunchers(channel string) (versionFeed, error) {
 
 }
 
-func getLauncherData(atokens accessTokens, architecture string, operatingSystem string) (launcherData, error) {
+func getVersionInformation(atokens accessTokens, architecture string, operatingSystem string) (launcherData, error) {
 
 	fullUrl, _ := url.JoinPath(ACCOUNT_DATA_URL, "my-account", "get-launcher-data");
 	launcherDataUrl, _ := url.Parse(fullUrl);
@@ -158,70 +165,3 @@ func getVersionManifest(atokens accessTokens, architecture string, operatingSyst
 }
 
 
-
-func checkVerExist(startVersion int, endVersion int, architecture string, operatingSystem string, channel string) bool {
-	for range 5 {
-		uri := guessPatchUrlNoAuth(architecture, operatingSystem, channel, startVersion, endVersion);
-		req, err := http.Head(uri);
-		if err != nil {
-			return false;
-		}
-
-
-		switch(req.StatusCode) {
-			case 200:
-				return true;
-			case 404:
-				return false;
-			default:
-				time.Sleep(time.Second * 3);
-				continue;
-		}
-	}
-	return false;
-}
-
-
-func findLatestVersionNoAuth(current int, architecture string, operatingSystem string, channel string) int {
-
-	// obtaining the latest version from hytale CDN (as well as its 'pretty' name)
-	// requires authentication to hytale servers,
-	// however downloading versions does not,
-	// this is an optimized search alogirithm to find the latest version
-	//
-	// it makes a few assumptions; mainly-
-	// - there are never gaps in version numbers
-	// - the url scheme of version downloads is .. os/arch/channel/startver/destver.pwr
-	// if hytale ever changes how they handle this, then everything will break.
-
-
-	if current <= 0 {
-		current = 1;
-	}
-
-	lastVersion := current;
-	curVersion := current;
-
-	// check if has been updates since this; no point if no new versions are added
-	if checkVerExist(0, current+1, architecture, operatingSystem, channel) {
-
-		// multiply version number by 2 until a version is not found ..
-		for checkVerExist(0, curVersion, architecture, operatingSystem, channel) {
-			lastVersion = curVersion;
-			curVersion *= 2;
-		}
-
-		// binary search from last valid, to largest invalid;
-		for lastVersion+1 < curVersion {
-			middle := (curVersion + lastVersion) /2;
-			if checkVerExist(0, middle, architecture, operatingSystem,channel) {
-				lastVersion = middle;
-			} else {
-				curVersion = middle;
-			}
-		}
-	}
-
-
-	return lastVersion;
-}
