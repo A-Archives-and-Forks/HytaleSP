@@ -227,7 +227,7 @@ func getActiveSkin() string {
 func delSkin(skinId string) {
 
 	for i, skin := range sSkin.Skins {
-		if skin.ID != skinId {
+		if skin.ID == skinId {
 			sSkin.Skins[i] = sSkin.Skins[len(sSkin.Skins)-1];
 			sSkin.Skins = sSkin.Skins[:len(sSkin.Skins)-1];
 

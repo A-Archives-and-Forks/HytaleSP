@@ -593,7 +593,7 @@ func launchGame(version int, channel string, username string, uuid string) error
 		}
 
 		if wCommune.Profiles == nil {
-			return errors.New("Could not find a profile");
+			return errors.New("Could not find a profile, does this account own hytale?");
 		}
 
 		// get currently selected profile
