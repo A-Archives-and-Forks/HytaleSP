@@ -79,8 +79,6 @@ then that should just work,
 you cannot play with users using "Authenticated" mode, or the offical launcher!
 for more information about this, see [SERVER.md](SERVER.md)
 
-An example server you can try is; ``server.diamondbyte.org:5521``
-
 # Alternative names
 Originally, i called it "hytLauncher", being a play on "TLauncher" for minecraft;
 however i found that, alot of other alternative hytale launchers had a simular name, (eg HyTaLauncher, HyLauncher, etc.)
